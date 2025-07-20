@@ -20,8 +20,6 @@ env:
   ZONE: "us-central1-a"
   MASTER_INSTANCE_NAME: k8s-master-node
   WORKER_INSTANCE_NAME: k8s-worker-node
-  MASTER_TEMPLATE_NAME: k8s-master-node
-  WORKER_TEMPLATE_NAME: k8s-worker-node
   MASTER_SSH_KEY: ${{ secrets.MASTER_SSH_KEY }}
   WORKER_SSH_KEY: ${{ secrets.WORKER_SSH_KEY }}
   SSH_USER: onukwilip
