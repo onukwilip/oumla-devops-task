@@ -43,8 +43,8 @@ resource "google_compute_instance_template" "k8s_master_node" {
       cd ~
 
       # Clone the repo 
-      REPO_URL="https://github.com/$USER/oumla-devops-task.git"
-      CLONE_DIR="oumla-devops-task/k8s/setup"
+      export REPO_URL="https://github.com/$USER/oumla-devops-task.git"
+      export CLONE_DIR="oumla-devops-task/k8s/setup"
 
       git clone $REPO_URL
 
@@ -149,8 +149,8 @@ resource "google_compute_instance_template" "k8s_worker_node" {
       cd ~
 
       # Clone the repo
-      REPO_URL="https://github.com/onukwilip/oumla-devops-task.git"
-      CLONE_DIR="oumla-devops-task/k8s/setup"
+      export REPO_URL="https://github.com/onukwilip/oumla-devops-task.git"
+      export CLONE_DIR="oumla-devops-task/k8s/setup"
 
       git clone $REPO_URL
 
