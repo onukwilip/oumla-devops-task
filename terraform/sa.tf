@@ -14,6 +14,7 @@ resource "google_project_iam_member" "k8s_sa_roles" {
     "roles/serviceusage.serviceUsageViewer",
     "roles/viewer",
     "roles/serviceusage.serviceUsageAdmin",
+    "roles/logging.logWriter"
   ])
 
   project = var.project_id
