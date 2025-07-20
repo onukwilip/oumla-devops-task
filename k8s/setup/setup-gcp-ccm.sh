@@ -1,11 +1,6 @@
 #!/bin/bash
 set -e
 
-# PROJECT_ID="kubernetes-practice-462208"
-# ZONE="us-central1-a"
-# MASTER_NODE="k8s-master-node"
-# WORKER_NODES=("k8s-worker-node")
-
 echo "Inside Script"
 
 echo "PROJECT_ID: $PROJECT_ID"
@@ -100,8 +95,8 @@ kubectl get pods -n kube-system
 
 # * 6. Update gcp-ccm.yaml (dynamically insert vars)
 echo "📦 Applying Google Cloud Controller Manager..."
-envsubst < ./online-auction-kubernetes/self-managed/manifests/gcp-ccm.yaml > ./online-auction-kubernetes/self-managed/manifests/gcp-ccm-valid.yaml
-kubectl apply -f ./online-auction-kubernetes/self-managed/manifests/gcp-ccm-valid.yaml
+envsubst < ./oumla-devops-task/k8s/setup/manifests/gcp-ccm.yaml > ./oumla-devops-task/k8s/setup/manifests/gcp-ccm-valid.yaml
+kubectl apply -f ./oumla-devops-task/k8s/setup/manifests/gcp-ccm-valid.yaml
 
 # * 7. Bind clusterrole if needed
 # ✅ Create ClusterRole only if it doesn't exist
