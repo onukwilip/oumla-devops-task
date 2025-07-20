@@ -59,7 +59,6 @@ resource "google_compute_instance_template" "k8s_master_node" {
 
       sudo chown -R $USER:$USER /home/$USER/.kube
 
-      cd ../manifests
       kubectl apply -f ./manifests/metrics-server.yml
     EOF
 
