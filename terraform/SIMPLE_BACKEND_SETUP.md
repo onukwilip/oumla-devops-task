@@ -1,6 +1,6 @@
 # Simple GCS Backend Setup
 
-## What you need to do:
+## What you need to do
 
 ### 1. Login to Google Cloud
 
