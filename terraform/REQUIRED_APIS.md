@@ -28,10 +28,18 @@ gcloud services enable iam.googleapis.com
 
 **What it does:** Creates service accounts and manages permissions
 
+### 4. Cloud Resource Manager API
+
+```bash
+gcloud services enable cloudresourcemanager.googleapis.com
+```
+
+**What it does:** Manages IAM permissions and project resources (REQUIRED for Terraform IAM)
+
 ## Enable All at Once
 
 ```bash
-gcloud services enable compute.googleapis.com storage-api.googleapis.com iam.googleapis.com
+gcloud services enable compute.googleapis.com storage-api.googleapis.com iam.googleapis.com cloudresourcemanager.googleapis.com
 ```
 
 ## Check if APIs are Enabled

@@ -58,6 +58,11 @@ gcloud projects add-iam-policy-binding ${YOUR_PROJECT_ID} \
 gcloud projects add-iam-policy-binding ${YOUR_PROJECT_ID} \
   --member="serviceAccount:terraform-sa@${YOUR_PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/serviceusage.serviceUsageAdmin"
+
+# For assigning IAM roles to other service accounts (REQUIRED for Terraform automation)
+gcloud projects add-iam-policy-binding ${YOUR_PROJECT_ID} \
+  --member="serviceAccount:terraform-sa@${YOUR_PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/resourcemanager.projectIamAdmin"
 ```
 
 ### 3. Create a Key File

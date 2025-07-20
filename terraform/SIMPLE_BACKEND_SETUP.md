@@ -37,7 +37,7 @@ terraform init
 
 That's it! Terraform will now save its state files to Google Cloud Storage.
 
-## If something goes wrong:
+## If something goes wrong
 
 - Make sure you're logged in: `gcloud auth list`
 - Make sure bucket exists: `gsutil ls gs://your-bucket-name`

@@ -11,10 +11,9 @@ resource "google_project_iam_member" "k8s_sa_roles" {
     "roles/iam.serviceAccountUser",
     "roles/compute.networkAdmin",
     "roles/compute.loadBalancerAdmin",
-    "roles/serviceusage.viewer",
+    "roles/serviceusage.serviceUsageViewer",
     "roles/viewer",
     "roles/serviceusage.serviceUsageAdmin",
-    "roles/artifactregistry.reader",
   ])
 
   project = var.project_id
