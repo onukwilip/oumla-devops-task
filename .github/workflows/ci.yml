@@ -1,0 +1,27 @@
+name: CI/CD Pipeline to build docker image
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Publish to GHCR
+    env:
+      SHA: ${{github.sha}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Authenticate for Docker Hub
+        id: docker-auth
+        run: |
+          docker login -u ${{secrets.DOCKER_USER}} -p ${{secrets.DOCKER_PASSWORD}} ghcr.io
+
+      - name: Build and tag Image
+        run: |
+          cd ./online-auction
+          docker build -t ghcr.io/onukwilip/online-auction:latest .
+
+      - name: Push the image to Docker hub
+        run: |
+          docker push ghcr.io/onukwilip/online-auction:latest

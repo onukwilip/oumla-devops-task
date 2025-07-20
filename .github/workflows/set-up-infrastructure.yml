@@ -1,0 +1,331 @@
+name: Set up Cluster on Compute Engine VMs
+
+on:
+  workflow_dispatch:
+    inputs:
+      new_cluster:
+        description: "Wait for cluster set up to run startup scripts"
+        required: true
+        type: boolean
+        default: true
+      worker_count:
+        description: "Number of worker nodes to create"
+        required: true
+        type: number
+        default: 2
+
+env:
+  PROJECT_ID: ${{ vars.PROJECT_ID }}
+  REGION: us-central1
+  ZONE: "us-central1-a"
+  MASTER_INSTANCE_NAME: k8s-master-node
+  WORKER_INSTANCE_NAME: k8s-worker-node
+  MASTER_TEMPLATE_NAME: k8s-master-node
+  WORKER_TEMPLATE_NAME: k8s-worker-node
+  MASTER_SSH_KEY: ${{ secrets.MASTER_SSH_KEY }}
+  WORKER_SSH_KEY: ${{ secrets.WORKER_SSH_KEY }}
+  SSH_USER: onukwilip
+
+jobs:
+  create-vms:
+    name: 🏗️ Deploy Infrastructure with Terraform
+    runs-on: ubuntu-latest
+    outputs:
+      master_ip: ${{ steps.terraform-output.outputs.master_ip }}
+      worker_ips: ${{ steps.terraform-output.outputs.worker_ips }}
+      worker_names: ${{ steps.terraform-output.outputs.worker_names }}
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🧰 Set up gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: 🔐 Authenticate with GCP
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: 🪣 Create GCS bucket for Terraform state (if not exists)
+        run: |
+          BUCKET_NAME="terraform-state-k8s-cluster-${{ env.PROJECT_ID }}"
+
+          if gsutil ls gs://$BUCKET_NAME &> /dev/null; then
+            echo "✅ Terraform state bucket already exists: $BUCKET_NAME"
+          else
+            echo "🚀 Creating Terraform state bucket: $BUCKET_NAME"
+            gsutil mb gs://$BUCKET_NAME
+            gsutil versioning set on gs://$BUCKET_NAME
+            echo "✅ Bucket created and versioning enabled"
+          fi
+
+      - name: � Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.0"
+          terraform_wrapper: false
+
+      - name: � Create terraform.tfvars
+        run: |
+          cd terraform
+          cat > terraform.tfvars << EOF
+          project_id = "${{ env.PROJECT_ID }}"
+          region     = "${{ env.REGION }}"
+          zone       = "${{ env.ZONE }}"
+          worker_node_count = ${{ github.event.inputs.worker_count }}
+          EOF
+          echo "✅ Created terraform.tfvars with project configuration"
+
+      - name: 🚀 Initialize Terraform
+        run: |
+          cd terraform
+          terraform init
+          echo "✅ Terraform initialized with GCS backend"
+
+      - name: 📋 Plan Terraform deployment
+        run: |
+          cd terraform
+          terraform plan -out=tfplan
+          echo "✅ Terraform plan created"
+
+      - name: 🏗️ Apply Terraform configuration
+        run: |
+          cd terraform
+          terraform apply -auto-approve tfplan
+          echo "✅ Infrastructure deployed successfully"
+
+      - name: 📊 Get Terraform outputs
+        id: terraform-output
+        run: |
+          cd terraform
+
+          # Get master IP
+          MASTER_IP=$(terraform output -raw master_external_ip)
+          echo "Master IP: $MASTER_IP"
+          echo "master_ip=$MASTER_IP" >> "$GITHUB_OUTPUT"
+
+          # Get worker IPs (comma-separated)
+          WORKER_IPS=$(terraform output -raw worker_external_ips)
+          echo "Worker IPs: $WORKER_IPS"
+          echo "worker_ips=$WORKER_IPS" >> "$GITHUB_OUTPUT"
+
+          # Get worker names (comma-separated)
+          WORKER_NAMES=$(terraform output -raw worker_instance_names)
+          echo "Worker Names: $WORKER_NAMES"
+          echo "worker_names=$WORKER_NAMES" >> "$GITHUB_OUTPUT"
+
+      - name: ⏱️ Wait for VMs to finish startup scripts
+        if: ${{ github.event.inputs.new_cluster == 'true' }}
+        run: |
+          echo "Waiting 6 minutes for VMs to complete startup scripts..."
+          sleep 360
+
+  generate-join-command:
+    name: 🔑 Generate kubeadm join command
+    needs: create-vms
+    runs-on: ubuntu-latest
+    outputs:
+      join_command: ${{ steps.join.outputs.join_command }}
+    steps:
+      - name: 🧰 Set up gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v3
+
+      - name: 🔐 Write credentials to file and authenticate
+        run: |
+          echo '${{ secrets.GCP_SERVICE_ACCOUNT }}' > /tmp/key.json
+          gcloud auth activate-service-account --key-file=/tmp/key.json
+          gcloud config set project ${{ env.PROJECT_ID }}
+
+      - name: 💻 SSH into master and retrieve join command
+        id: join
+        run: |
+          JOIN_CMD=$(gcloud compute ssh ${{ env.SSH_USER }}@${{ env.MASTER_INSTANCE_NAME }} \
+            --zone=${{ env.ZONE }} \
+            --quiet \
+            --command='kubeadm token create --print-join-command' 2>/dev/null | grep '^kubeadm join')
+
+          echo "Join command is: $JOIN_CMD"
+          echo "join_command=$JOIN_CMD" >> "$GITHUB_OUTPUT"
+
+  prepare-worker-matrix:
+    name: 🔧 Prepare Worker Matrix
+    needs: [create-vms]
+    runs-on: ubuntu-latest
+    outputs:
+      worker_ips_array: ${{ steps.setup-matrix.outputs.worker_ips_array }}
+    steps:
+      - name: 🔧 Setup matrix for worker IPs
+        id: setup-matrix
+        run: |
+          # Convert comma-separated IPs to JSON array
+          WORKER_IPS="${{ needs.create-vms.outputs.worker_ips }}"
+          echo "Raw worker IPs: $WORKER_IPS"
+
+          # Convert to JSON array format
+          IFS=',' read -ra IP_ARRAY <<< "$WORKER_IPS"
+          JSON_ARRAY="["
+          for i in "${!IP_ARRAY[@]}"; do
+            if [ $i -gt 0 ]; then
+              JSON_ARRAY+=","
+            fi
+            JSON_ARRAY+="\"${IP_ARRAY[$i]}\""
+          done
+          JSON_ARRAY+="]"
+
+          echo "JSON Array: $JSON_ARRAY"
+          echo "worker_ips_array=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
+
+  bootstrap-workers:
+    name: 🛠️ Bootstrap Worker Nodes
+    needs: [create-vms, generate-join-command, prepare-worker-matrix]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        worker_ip: ${{ fromJson(needs.prepare-worker-matrix.outputs.worker_ips_array) }}
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v3
+
+      - name: 🐛 Debug Outputs
+        run: |
+          echo "Resolved Master IP: ${{ needs.create-vms.outputs.master_ip }}"
+          echo "Resolved Worker IPs: ${{ needs.create-vms.outputs.worker_ips }}"
+          echo "Current Worker IP: ${{ matrix.worker_ip }}"
+          echo "Join Command: \"${{ needs.generate-join-command.outputs.join_command }}\""
+
+      - name: 💻 SSH into worker and run script
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ matrix.worker_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.WORKER_SSH_KEY }}
+          script: |
+            echo "🚀 Bootstrapping Worker Node at ${{ matrix.worker_ip }}..."
+            sudo chmod +x ~/online-auction-kubernetes/self-managed/bootstrap-worker-node.sh
+
+            if [ ! -f /etc/kubernetes/kubelet.conf ]; then
+              echo "🔗 Node not yet joined to cluster. Proceeding with join..."
+              sudo ~/online-auction-kubernetes/self-managed/bootstrap-worker-node.sh "${{ needs.generate-join-command.outputs.join_command }}"
+            else
+              echo "✅ Worker node is already part of the cluster. Skipping join step."
+            fi
+
+  configure-coredns-rolebinding:
+    name: 🛡️ Configure CoreDNS RoleBinding
+    needs: [bootstrap-workers, create-vms]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v3
+
+      - name: 💻 SSH into master and run CoreDNS RoleBinding manifest
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ needs.create-vms.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "🛡️ Applying CoreDNS RoleBinding..."
+            kubectl apply -f ./online-auction-kubernetes/self-managed/manifests/core-dns-rolebinding.yml
+            kubectl -n kube-system rollout restart deployment/coredns
+
+  setup-cloud-controller:
+    name: ☁️ Set up Cloud Controller Manager + CoreDNS
+    needs: [bootstrap-workers, create-vms]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v3
+
+      - name: 💻 SSH into master and run CCM script
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ needs.create-vms.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "Outside Script"
+
+            echo "PROJECT_ID: ${{ env.PROJECT_ID }}"
+            echo "ZONE: ${{ env.ZONE }}"
+            echo "MASTER_NODE: ${{ env.MASTER_INSTANCE_NAME }}"
+            echo "WORKER_NODES: ${{ needs.create-vms.outputs.worker_names }}"
+
+            sudo chmod +x ~/online-auction-kubernetes/self-managed/setup-gcp-ccm.sh
+
+            cd ~/online-auction-kubernetes
+            sudo git add . && sudo git commit -m 'Commiting previous changes if any' || true
+            sudo git pull --rebase origin main || true
+
+            cd ..
+
+            # Export environment variables and create a wrapper script
+            export PROJECT_ID=${{ env.PROJECT_ID }}
+            export ZONE=${{ env.ZONE }}
+            export MASTER_NODE=${{ env.MASTER_INSTANCE_NAME }}
+
+            # Convert comma-separated worker names to bash array and run script
+            WORKER_NAMES_CSV="${{ needs.create-vms.outputs.worker_names }}"
+            IFS=',' read -ra WORKER_NODES <<< "$WORKER_NAMES_CSV"
+
+            echo "Worker nodes array: ${WORKER_NODES[@]}"
+
+            # Create a temporary script that sets up the WORKER_NODES array and calls the original script
+            cat > /tmp/ccm_wrapper.sh << 'EOF'
+            #!/bin/bash
+            # Convert the comma-separated string to array
+            IFS=',' read -ra WORKER_NODES <<< "$1"
+            export WORKER_NODES=("${WORKER_NODES[@]}")
+            shift
+            # Execute the original script with remaining arguments
+            exec "$@"
+            EOF
+
+            chmod +x /tmp/ccm_wrapper.sh
+            sudo -E /tmp/ccm_wrapper.sh "$WORKER_NAMES_CSV" ~/online-auction-kubernetes/self-managed/setup-gcp-ccm.sh
+
+            # Clean up
+            rm -f /tmp/ccm_wrapper.sh
+
+            cd ~/online-auction-kubernetes
+            sudo git add . && sudo git commit -m 'Updating changes...' || true
+
+  setup-csi:
+    name: 💾 Set up CSI Driver
+    needs: [setup-cloud-controller, create-vms]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v3
+
+      - name: ⏳ Wait for cluster to be ready
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ needs.create-vms.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "Waiting for Kubernetes API server..."
+            timeout 120 bash -c 'until kubectl cluster-info &> /dev/null; do sleep 10; done'
+
+      - name: 💻 SSH into master and run CSI driver script
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ needs.create-vms.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            export PROJECT_ID=${{ env.PROJECT_ID }}
+            export ZONE=${{ env.ZONE }}
+
+            # Make script executable and run it
+            sudo chmod +x ~/online-auction-kubernetes/self-managed/setup-csi-driver.sh
+            sudo -E ~/online-auction-kubernetes/self-managed/setup-csi-driver.sh
