@@ -16,11 +16,6 @@ output "worker_nodes_external_ips" {
   value       = google_compute_instance_from_template.k8s_workers[*].network_interface[0].access_config[0].nat_ip
 }
 
-output "worker_instance_names" {
-  description = "Names of the Kubernetes worker nodes"
-  value       = google_compute_instance_from_template.k8s_workers[*].name
-}
-
 # Output worker nodes internal IPs
 output "worker_nodes_internal_ips" {
   description = "Internal IP addresses of the Kubernetes worker nodes"

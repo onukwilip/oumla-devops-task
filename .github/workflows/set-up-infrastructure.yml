@@ -83,12 +83,6 @@ jobs:
           terraform init
           echo "✅ Terraform initialized with GCS backend"
 
-      - name: 📋 Plan Terraform deployment
-        run: |
-          cd terraform
-          terraform plan -out=tfplan
-          echo "✅ Terraform plan created"
-
       - name: 🏗️ Apply Terraform configuration
         run: |
           cd terraform
@@ -96,7 +90,7 @@ jobs:
           echo "🔄 Refreshing Terraform state..."
           terraform refresh
 
-          terraform apply -auto-approve tfplan
+          terraform apply --auto-approve
           echo "✅ Infrastructure deployed successfully"
 
       - name: 📊 Get Terraform outputs
@@ -115,7 +109,7 @@ jobs:
           echo "worker_ips=$WORKER_IPS" >> "$GITHUB_OUTPUT"
 
           # Get worker names (comma-separated)
-          WORKER_NAMES=$(terraform output -raw worker_instance_names)
+          WORKER_NAMES=$(terraform output -raw worker_nodes_names)
           echo "Worker Names: $WORKER_NAMES"
           echo "worker_names=$WORKER_NAMES" >> "$GITHUB_OUTPUT"
 
