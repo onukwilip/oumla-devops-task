@@ -205,11 +205,11 @@ jobs:
           key: ${{ env.WORKER_SSH_KEY }}
           script: |
             echo "🚀 Bootstrapping Worker Node at ${{ matrix.worker_ip }}..."
-            sudo chmod +x ~/online-auction-kubernetes/self-managed/bootstrap-worker-node.sh
+            sudo chmod +x ~/oumla-devops-task/k8s/setup/bootstrap-worker-node.sh
 
             if [ ! -f /etc/kubernetes/kubelet.conf ]; then
               echo "🔗 Node not yet joined to cluster. Proceeding with join..."
-              sudo ~/online-auction-kubernetes/self-managed/bootstrap-worker-node.sh "${{ needs.generate-join-command.outputs.join_command }}"
+              sudo ~/oumla-devops-task/k8s/setup/bootstrap-worker-node.sh "${{ needs.generate-join-command.outputs.join_command }}"
             else
               echo "✅ Worker node is already part of the cluster. Skipping join step."
             fi
@@ -230,7 +230,7 @@ jobs:
           key: ${{ env.MASTER_SSH_KEY }}
           script: |
             echo "🛡️ Applying CoreDNS RoleBinding..."
-            kubectl apply -f ./online-auction-kubernetes/self-managed/manifests/core-dns-rolebinding.yml
+            kubectl apply -f ./oumla-devops-task/k8s/setup/manifests/core-dns-rolebinding.yml
             kubectl -n kube-system rollout restart deployment/coredns
 
   setup-cloud-controller:
@@ -255,9 +255,9 @@ jobs:
             echo "MASTER_NODE: ${{ env.MASTER_INSTANCE_NAME }}"
             echo "WORKER_NODES: ${{ needs.create-vms.outputs.worker_names }}"
 
-            sudo chmod +x ~/online-auction-kubernetes/self-managed/setup-gcp-ccm.sh
+            sudo chmod +x ~/oumla-devops-task/k8s/setup/setup-gcp-ccm.sh
 
-            cd ~/online-auction-kubernetes
+            cd ~/oumla-devops-task
             sudo git add . && sudo git commit -m 'Commiting previous changes if any' || true
             sudo git pull --rebase origin main || true
 
@@ -286,12 +286,12 @@ jobs:
             EOF
 
             chmod +x /tmp/ccm_wrapper.sh
-            sudo -E /tmp/ccm_wrapper.sh "$WORKER_NAMES_CSV" ~/online-auction-kubernetes/self-managed/setup-gcp-ccm.sh
+            sudo -E /tmp/ccm_wrapper.sh "$WORKER_NAMES_CSV" ~/oumla-devops-task/k8s/setup/setup-gcp-ccm.sh
 
             # Clean up
             rm -f /tmp/ccm_wrapper.sh
 
-            cd ~/online-auction-kubernetes
+            cd ~/oumla-devops-task
             sudo git add . && sudo git commit -m 'Updating changes...' || true
 
   setup-csi:
@@ -323,5 +323,5 @@ jobs:
             export ZONE=${{ env.ZONE }}
 
             # Make script executable and run it
-            sudo chmod +x ~/online-auction-kubernetes/self-managed/setup-csi-driver.sh
-            sudo -E ~/online-auction-kubernetes/self-managed/setup-csi-driver.sh
+            sudo chmod +x ~/oumla-devops-task/k8s/setup/setup-csi-driver.sh
+            sudo -E ~/oumla-devops-task/k8s/setup/setup-csi-driver.sh
