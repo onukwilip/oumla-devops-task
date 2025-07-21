@@ -12,20 +12,20 @@ output "master_node_internal_ip" {
 
 # Output worker nodes external IPs
 output "worker_nodes_external_ips" {
-  description = "External IP addresses of the Kubernetes worker nodes"
-  value       = google_compute_instance_from_template.k8s_workers[*].network_interface[0].access_config[0].nat_ip
+  description = "External IP addresses of the Kubernetes worker nodes (comma-separated)"
+  value       = join(",", google_compute_instance_from_template.k8s_workers[*].network_interface[0].access_config[0].nat_ip)
 }
 
 # Output worker nodes internal IPs
 output "worker_nodes_internal_ips" {
-  description = "Internal IP addresses of the Kubernetes worker nodes"
-  value       = google_compute_instance_from_template.k8s_workers[*].network_interface[0].network_ip
+  description = "Internal IP addresses of the Kubernetes worker nodes (comma-separated)"
+  value       = join(",", google_compute_instance_from_template.k8s_workers[*].network_interface[0].network_ip)
 }
 
 # Output worker nodes names
 output "worker_nodes_names" {
-  description = "Names of the Kubernetes worker nodes"
-  value       = google_compute_instance_from_template.k8s_workers[*].name
+  description = "Names of the Kubernetes worker nodes (comma-separated)"
+  value       = join(",", google_compute_instance_from_template.k8s_workers[*].name)
 }
 
 # Output the join command for worker nodes (placeholder)
