@@ -105,12 +105,12 @@ jobs:
           cd terraform
 
           # Get master IP
-          MASTER_IP=$(terraform output -raw master_external_ip)
+          MASTER_IP=$(terraform output -raw master_node_external_ip)
           echo "Master IP: $MASTER_IP"
           echo "master_ip=$MASTER_IP" >> "$GITHUB_OUTPUT"
 
           # Get worker IPs (comma-separated)
-          WORKER_IPS=$(terraform output -raw worker_external_ips)
+          WORKER_IPS=$(terraform output -raw worker_nodes_external_ips)
           echo "Worker IPs: $WORKER_IPS"
           echo "worker_ips=$WORKER_IPS" >> "$GITHUB_OUTPUT"
 
