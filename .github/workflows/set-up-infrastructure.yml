@@ -92,6 +92,10 @@ jobs:
       - name: 🏗️ Apply Terraform configuration
         run: |
           cd terraform
+
+          echo "🔄 Refreshing Terraform state..."
+          terraform refresh
+
           terraform apply -auto-approve tfplan
           echo "✅ Infrastructure deployed successfully"
 

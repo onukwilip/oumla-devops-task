@@ -133,13 +133,13 @@ jobs:
       - name: 🗑️ Apply Terraform destruction
         run: |
           cd terraform
-          if [ "${{ github.event.inputs.force_destroy }}" = "true" ]; then
-            echo "🔥 Force destroying infrastructure..."
-            terraform apply -auto-approve destroy-plan
-          else
-            echo "🗑️ Destroying infrastructure..."
-            terraform apply -auto-approve destroy-plan
-          fi
+
+          echo "🔄 Refreshing Terraform state..."
+          terraform refresh
+
+          echo "🗑️ Destroying infrastructure..."
+          terraform apply -auto-approve destroy-plan
+
           echo "✅ Infrastructure destroyed successfully"
 
       - name: 🧹 Cleanup state bucket (optional)
