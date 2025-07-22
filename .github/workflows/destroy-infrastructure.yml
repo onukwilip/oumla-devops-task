@@ -111,25 +111,6 @@ jobs:
           terraform init
           echo "✅ Terraform initialized with GCS backend"
 
-      - name: 📋 Plan Terraform destruction
-        run: |
-          cd terraform
-          echo "🔍 Planning infrastructure destruction..."
-          terraform plan -destroy -out=destroy-plan
-          echo "✅ Destruction plan created"
-
-      - name: 📊 Show what will be destroyed
-        run: |
-          cd terraform
-          echo "📋 Resources to be destroyed:"
-          terraform show destroy-plan
-
-      - name: ⏱️ Final warning before destruction
-        run: |
-          echo "🚨 FINAL WARNING: Infrastructure will be destroyed in 15 seconds!"
-          echo "🛑 Cancel this job now if you want to keep your resources!"
-          sleep 15
-
       - name: 🗑️ Apply Terraform destruction
         run: |
           cd terraform
@@ -138,7 +119,7 @@ jobs:
           terraform refresh
 
           echo "🗑️ Destroying infrastructure..."
-          terraform apply -auto-approve destroy-plan
+          terraform destroy --auto-approve
 
           echo "✅ Infrastructure destroyed successfully"
 
