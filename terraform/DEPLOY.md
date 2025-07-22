@@ -79,6 +79,15 @@ Terraform will output:
 terraform destroy
 ```
 
+**Note:** If you get an error about routes blocking VPC deletion, clean them up first:
+```bash
+# Clean up Kubernetes-created routes
+gcloud compute routes list --filter="network:k8s-cluster-vpc AND name:kubernetes*" --format="value(name)" | xargs -I {} gcloud compute routes delete {} --quiet
+
+# Then destroy infrastructure
+terraform destroy
+```
+
 ---
 
 **Need help?** Check the other docs:

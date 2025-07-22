@@ -111,6 +111,22 @@ jobs:
           terraform init
           echo "✅ Terraform initialized with GCS backend"
 
+      - name: 🧹 Clean up Kubernetes routes (if any)
+        run: |
+          echo "🧹 Cleaning up any Kubernetes-created routes..."
+          
+          # List and delete kubernetes routes that might block VPC deletion
+          ROUTES=$(gcloud compute routes list --filter="network:k8s-cluster-vpc AND name:kubernetes*" --format="value(name)" 2>/dev/null || true)
+          
+          if [ -n "$ROUTES" ]; then
+            echo "🗑️ Found Kubernetes routes to delete:"
+            echo "$ROUTES"
+            echo "$ROUTES" | xargs -I {} gcloud compute routes delete {} --quiet 2>/dev/null || true
+            echo "✅ Kubernetes routes cleaned up"
+          else
+            echo "✅ No Kubernetes routes found to clean up"
+          fi
+
       - name: 🗑️ Apply Terraform destruction
         run: |
           cd terraform
