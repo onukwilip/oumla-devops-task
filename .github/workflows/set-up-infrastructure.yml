@@ -325,3 +325,36 @@ jobs:
             # Make script executable and run it
             sudo chmod +x ~/oumla-devops-task/k8s/setup/setup-csi-driver.sh
             sudo -E ~/oumla-devops-task/k8s/setup/setup-csi-driver.sh
+
+  setup-vpa:
+    name: 📈 Set up Vertical Pod Autoscaler
+    needs: [setup-csi, create-vms]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v3
+
+      - name: ⏳ Wait for CSI driver to be ready
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ needs.create-vms.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "Waiting for CSI driver deployment..."
+            kubectl wait --for=condition=available --timeout=180s deployment/csi-gce-pd-controller -n kube-system || true
+
+      - name: 💻 SSH into master and install VPA
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ needs.create-vms.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "🚀 Setting up Vertical Pod Autoscaler..."
+            
+            # Make script executable and run it
+            chmod +x ~/oumla-devops-task/k8s/setup/setup-vpa.sh
+            ~/oumla-devops-task/k8s/setup/setup-vpa.sh
+            
+            echo "✅ VPA setup completed! Ready for Geth autoscaling."

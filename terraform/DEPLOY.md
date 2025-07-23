@@ -35,7 +35,7 @@ worker_node_count = 2;
 
 ```bash
 # Set up authentication
-export GOOGLE_APPLICATION_CREDENTIALS="./terraform-key.json"
+export GOOGLE_APPLICATION_CREDENTIALS="../terraform-key.json"
 
 # Initialize Terraform (downloads providers, sets up backend)
 terraform init
@@ -80,6 +80,7 @@ terraform destroy
 ```
 
 **Note:** If you get an error about routes blocking VPC deletion, clean them up first:
+
 ```bash
 # Clean up Kubernetes-created routes
 gcloud compute routes list --filter="network:k8s-cluster-vpc AND name:kubernetes*" --format="value(name)" | xargs -I {} gcloud compute routes delete {} --quiet

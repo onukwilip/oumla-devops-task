@@ -248,5 +248,5 @@ ssh-keygen -R IP_ADDRESS
 
 <!-- ! REMOVE -->
 
-mongodb-0.mongodb-headless.default.svc.cluster.local:27017
-mongodb-1.mongodb-headless.default.svc.cluster.local:27017
+helm install geth .\helm\charts\geth-1.0.9.tgz -f .\helm\values\goeth.yml
+helm install ingress ../helm/charts/ingress-nginx-4.13.0.tgz --namespace ingress-nginx --create-namespace

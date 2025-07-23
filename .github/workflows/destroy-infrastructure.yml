@@ -114,10 +114,10 @@ jobs:
       - name: 🧹 Clean up Kubernetes routes (if any)
         run: |
           echo "🧹 Cleaning up any Kubernetes-created routes..."
-          
+
           # List and delete kubernetes routes that might block VPC deletion
           ROUTES=$(gcloud compute routes list --filter="network:k8s-cluster-vpc AND name:kubernetes*" --format="value(name)" 2>/dev/null || true)
-          
+
           if [ -n "$ROUTES" ]; then
             echo "🗑️ Found Kubernetes routes to delete:"
             echo "$ROUTES"
