@@ -238,6 +238,11 @@ curl -k https://kubernetes.default.svc.cluster.local:443/healthz
 
 kubectl exec -n kube-system coredns-7db6d8ff4d-qvv2v -- curl -k https://10.96.0.1:443/healthz
 
+## Set up Argo CD
+
+kubectl create namespace argocd
+curl -sSL -o argocd-install.yaml https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
 <!-- * SSH into Node -->
 
 ssh -i "C:\Users\Prince\Documents\keys\k8s_control_plane" onukwilip@

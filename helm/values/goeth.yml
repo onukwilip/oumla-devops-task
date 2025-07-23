@@ -61,7 +61,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 # -- Number of replicas
-replicas: 1
+replicas: 2
 
 image:
   # -- geth container image repository
