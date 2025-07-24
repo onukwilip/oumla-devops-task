@@ -75,6 +75,18 @@ jobs:
             fi
             helm version
 
+      - name: ⬇️ Pull latest changes
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            cd ~/oumla-devops-task
+            sudo git add . && sudo git commit -m 'Commiting previous changes if any' || true
+            sudo git pull --rebase origin main || true
+            echo "⏬ Pulled latest changes from main branch"
+
       - name: 🚀 Install ArgoCD
         if: ${{ github.event.inputs.skip_argocd != 'true' }}
         uses: appleboy/ssh-action@v1.0.3
