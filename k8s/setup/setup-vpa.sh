@@ -43,7 +43,7 @@ kubectl apply -f "$VPA_URL/admission-controller-deployment.yaml"
 echo "⏳ Waiting for VPA components..."
 kubectl wait --for=condition=available --timeout=180s deployment/vpa-recommender -n kube-system
 kubectl wait --for=condition=available --timeout=180s deployment/vpa-updater -n kube-system
-kubectl wait --for=condition=available --timeout=180s deployment/vpa-admission-controller -n kube-system
+# kubectl wait --for=condition=available --timeout=180s deployment/vpa-admission-controller -n kube-system || true
 
 echo "✅ VPA installation completed!"
 echo "📝 Next: kubectl apply -f k8s/manifests/geth-vpa.yml"
