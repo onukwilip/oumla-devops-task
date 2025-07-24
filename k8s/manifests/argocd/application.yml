@@ -9,10 +9,10 @@ spec:
   source:
     repoURL: 'https://github.com/onukwilip/oumla-devops-task.git'
     targetRevision: HEAD
-    path: 'helm/charts' # Point to the charts directory where geth-1.0.9.tgz is located
+    path: 'helm/charts/geth' # Point to the charts directory where chart is located
     helm:
       valueFiles:
-      - '../values/goeth.yml' # Relative path from charts/ to values/
+      - '../../values/goeth.yml' # Relative path from charts/geth to values/
       parameters:
       - name: image.tag
         value: stable
