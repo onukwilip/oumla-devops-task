@@ -254,4 +254,4 @@ ssh-keygen -R IP_ADDRESS
 <!-- ! REMOVE -->
 
 helm install geth .\helm\charts\geth-1.0.9.tgz -f .\helm\values\goeth.yml
-helm install ingress ../helm/charts/ingress-nginx-4.13.0.tgz --namespace ingress-nginx --create-namespace
+helm install ingress ../helm/charts/ingress-nginx-4.13.0.tgz --namespace ingress-nginx --create-namespace --set controller.metrics.enabled=true --set controller.podAnnotations."prometheus\.io/scrape"="true" --set controller.podAnnotations."prometheus\.io/port"="10254"
