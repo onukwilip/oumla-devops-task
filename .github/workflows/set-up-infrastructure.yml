@@ -358,9 +358,16 @@ jobs:
           script: |
             echo "🚀 Setting up Vertical Pod Autoscaler..."
 
-            # Make script executable and run it
-            chmod +x ~/oumla-devops-task/k8s/setup/setup-vpa.sh
-            ~/oumla-devops-task/k8s/setup/setup-vpa.sh
+            # Make script executable and run with sudo
+            sudo chmod +x ~/oumla-devops-task/k8s/setup/setup-vpa.sh
+
+            # Run the VPA setup script and capture exit code
+            if sudo ~/oumla-devops-task/k8s/setup/setup-vpa.sh; then
+              echo "✅ VPA setup completed successfully!"
+            else
+              echo "❌ VPA setup failed!"
+              exit 1
+            fi
 
             echo "✅ VPA setup completed! Ready for Geth autoscaling."
 
@@ -384,11 +391,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'setup-cluster-services.yml',
-              ref: 'main',
-              inputs: {
-                skip_argocd: 'false',
-                skip_monitoring: 'false'
-              }
+              ref: 'main'
             });
 
             console.log('✅ Services setup workflow triggered successfully!');
