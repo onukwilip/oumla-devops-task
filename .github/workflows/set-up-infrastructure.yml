@@ -347,7 +347,19 @@ jobs:
           key: ${{ env.MASTER_SSH_KEY }}
           script: |
             echo "Waiting for CSI driver deployment..."
-            kubectl wait --for=condition=available --timeout=180s deployment/csi-gce-pd-controller -n kube-system || true
+            
+            # Wait for CSI driver with proper error handling
+            if kubectl wait --for=condition=available --timeout=300s deployment/csi-gce-pd-controller -n kube-system; then
+              echo "✅ CSI driver is ready"
+            else
+              echo "⚠️  CSI driver not ready, but continuing..."
+            fi
+            
+            # Ensure kubectl connectivity is stable
+            echo "🔍 Verifying cluster connectivity..."
+            kubectl cluster-info
+            kubectl get nodes
+            echo "✅ Cluster connectivity verified"
 
       - name: 💻 SSH into master and install VPA
         uses: appleboy/ssh-action@v1.0.3
@@ -357,6 +369,22 @@ jobs:
           key: ${{ env.MASTER_SSH_KEY }}
           script: |
             echo "🚀 Setting up Vertical Pod Autoscaler..."
+
+            # Ensure kubectl connectivity before running VPA setup
+            echo "🔍 Pre-flight check: Testing kubectl connectivity..."
+            if ! kubectl cluster-info &> /dev/null; then
+              echo "⚠️  kubectl not accessible, waiting for cluster..."
+              sleep 30
+              if ! kubectl cluster-info &> /dev/null; then
+                echo "❌ Cluster still not accessible, attempting to restart kubelet..."
+                sudo systemctl restart kubelet
+                sleep 30
+              fi
+            fi
+
+            # Verify cluster is accessible
+            kubectl cluster-info
+            kubectl get nodes
 
             # Make script executable and run with sudo
             sudo chmod +x ~/oumla-devops-task/k8s/setup/setup-vpa.sh
