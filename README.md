@@ -61,7 +61,7 @@ Here's exactly what you'll pay each month for running 5 Ethereum nodes:
 | **Setup Difficulty**     | Click a button           | Follow this guide | Worth the effort! |
 | **Control Over System**  | Limited                  | Full control      | Priceless         |
 
-**Bottom Line**: You'll save $600-800 every single month. That's $7,200-$9,600 per year just by spending a weekend setting this up!
+**Bottom Line**: You'll save $70+ every single month. That's $840+ per year just by spending a weekend setting this up!
 
 ### Why Google Charges So Much
 
