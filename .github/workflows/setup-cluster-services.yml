@@ -76,7 +76,7 @@ jobs:
             helm version
 
       - name: 🚀 Install ArgoCD
-        if: ${{ !github.event.inputs.skip_argocd }}
+        if: ${{ github.event.inputs.skip_argocd != 'true' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ steps.master-ip.outputs.master_ip }}
@@ -134,7 +134,7 @@ jobs:
               --timeout=300s
 
       - name: 📊 Install Prometheus & Grafana
-        if: ${{ !github.event.inputs.skip_monitoring }}
+        if: ${{ github.event.inputs.skip_monitoring != 'true' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ steps.master-ip.outputs.master_ip }}
@@ -165,7 +165,7 @@ jobs:
             fi
 
       - name: 📈 Setup Ingress Controller Monitoring
-        if: ${{ !github.event.inputs.skip_monitoring }}
+        if: ${{ github.event.inputs.skip_monitoring != 'true' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ steps.master-ip.outputs.master_ip }}

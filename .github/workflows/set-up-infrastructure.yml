@@ -391,7 +391,11 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'setup-cluster-services.yml',
-              ref: 'main'
+              ref: 'main',
+              inputs: {
+                skip_argocd: 'false',
+                skip_monitoring: 'false'
+              }
             });
 
             console.log('✅ Services setup workflow triggered successfully!');
