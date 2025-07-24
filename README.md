@@ -1,6 +1,6 @@
-# 🚀 Save $600+ Monthly: Self-Managed Kubernetes for Ethereum Nodes
+# 🚀 Save $70+ Monthly: Self-Managed Kubernetes for Ethereum Nodes
 
-Stop paying Google $800-1200/month for managed Kubernetes! This project shows you how to run Ethereum blockchain nodes for just $200-400/month while keeping all the benefits of professional-grade infrastructure.
+Stop paying Google ~$220/month for managed Kubernetes! This project shows you how to run Ethereum blockchain nodes for just ~$150/month while keeping all the benefits of professional-grade infrastructure.
 
 ## 🎯 What This Project Does
 
@@ -532,4 +532,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Built with ❤️ for the blockchain community**
+## **Built with ❤️ for the blockchain community**
