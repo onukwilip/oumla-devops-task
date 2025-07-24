@@ -7,14 +7,6 @@ set -e
 
 echo "🚀 Installing ArgoCD on Kubernetes cluster..."
 
-# Check if kubectl is available and cluster is accessible
-if ! kubectl cluster-info &> /dev/null; then
-    echo "❌ Cannot connect to Kubernetes cluster"
-    exit 1
-fi
-
-echo "✅ Cluster connection verified"
-
 # Check if argocd namespace exists and create if needed
 echo "📦 Checking ArgoCD namespace..."
 if kubectl get namespace argocd &> /dev/null; then

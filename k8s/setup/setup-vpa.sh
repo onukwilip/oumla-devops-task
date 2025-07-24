@@ -7,14 +7,6 @@ set -e
 
 echo "🚀 Setting up VPA for Kubernetes cluster..."
 
-# Basic checks
-# if ! kubectl cluster-info &> /dev/null; then
-#     echo "❌ Cannot connect to Kubernetes cluster"
-#     exit 1
-# fi
-
-echo "✅ Cluster connection verified"
-
 # Check if VPA is already installed
 if kubectl get crd verticalpodautoscalers.autoscaling.k8s.io &> /dev/null; then
     echo "✅ VPA CRDs already exist, checking components..."

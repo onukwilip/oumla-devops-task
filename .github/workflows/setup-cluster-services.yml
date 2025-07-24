@@ -85,8 +85,8 @@ jobs:
           script: |
             echo "🚀 Installing ArgoCD..."
             cd ~/oumla-devops-task
-            chmod +x k8s/setup/setup-argocd.sh
-            ./k8s/setup/setup-argocd.sh
+            sudo chmod +x k8s/setup/setup-argocd.sh
+            sudo -E ./k8s/setup/setup-argocd.sh
 
       - name: 📈 Apply VPA for Geth
         uses: appleboy/ssh-action@v1.0.3

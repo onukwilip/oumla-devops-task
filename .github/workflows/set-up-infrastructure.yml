@@ -347,14 +347,14 @@ jobs:
           key: ${{ env.MASTER_SSH_KEY }}
           script: |
             echo "Waiting for CSI driver deployment..."
-            
+
             # Wait for CSI driver with proper error handling
             if kubectl wait --for=condition=available --timeout=300s deployment/csi-gce-pd-controller -n kube-system; then
               echo "✅ CSI driver is ready"
             else
               echo "⚠️  CSI driver not ready, but continuing..."
             fi
-            
+
             # Ensure kubectl connectivity is stable
             echo "🔍 Verifying cluster connectivity..."
             kubectl cluster-info
@@ -390,7 +390,7 @@ jobs:
             sudo chmod +x ~/oumla-devops-task/k8s/setup/setup-vpa.sh
 
             # Run the VPA setup script and capture exit code
-            if sudo ~/oumla-devops-task/k8s/setup/setup-vpa.sh; then
+            if sudo -E ~/oumla-devops-task/k8s/setup/setup-vpa.sh; then
               echo "✅ VPA setup completed successfully!"
             else
               echo "❌ VPA setup failed!"
