@@ -1,0 +1,299 @@
+name: 🛠️ Setup Cluster Services
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_argocd:
+        description: "Skip ArgoCD installation"
+        required: false
+        type: boolean
+        default: false
+      skip_monitoring:
+        description: "Skip Prometheus/Grafana installation"
+        required: false
+        type: boolean
+        default: false
+
+  workflow_call:
+    inputs:
+      skip_argocd:
+        description: "Skip ArgoCD installation"
+        required: false
+        type: boolean
+        default: false
+      skip_monitoring:
+        description: "Skip Prometheus/Grafana installation"
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PROJECT_ID: ${{ vars.PROJECT_ID }}
+  REGION: us-central1
+  ZONE: us-central1-a
+  MASTER_INSTANCE_NAME: k8s-master-node
+  SSH_USER: onukwilip
+  MASTER_SSH_KEY: ${{ secrets.MASTER_SSH_KEY }}
+
+jobs:
+  setup-services:
+    name: 🛠️ Setup Essential Services
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔐 Authenticate with GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: 🧰 Set up gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: 🔧 Get Master Node IP
+        id: master-ip
+        run: |
+          MASTER_IP=$(gcloud compute instances describe ${{ env.MASTER_INSTANCE_NAME }} --zone=${{ env.ZONE }} --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
+          echo "Master IP: $MASTER_IP"
+          echo "master_ip=$MASTER_IP" >> "$GITHUB_OUTPUT"
+
+      - name: 🎡 Install Helm on Master Node
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "🎡 Installing Helm..."
+            if ! command -v helm &> /dev/null; then
+              curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+            else
+              echo "✅ Helm already installed"
+            fi
+            helm version
+
+      - name: 🚀 Install ArgoCD
+        if: ${{ !github.event.inputs.skip_argocd }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "🚀 Installing ArgoCD..."
+            cd ~/oumla-devops-task
+            chmod +x k8s/setup/setup-argocd.sh
+            ./k8s/setup/setup-argocd.sh
+
+      - name: 📈 Apply VPA for Geth
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "📈 Applying Geth VPA manifest..."
+            cd ~/oumla-devops-task
+            kubectl apply -f k8s/manifests/geth-vpa.yml
+
+      - name: 🌐 Install Ingress Controller
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "🌐 Installing Ingress Controller..."
+            cd ~/oumla-devops-task
+
+            # Check if ingress release already exists
+            if helm list -n ingress-nginx | grep -q "^ingress"; then
+              echo "✅ Ingress Controller already installed, upgrading..."
+              helm upgrade ingress ./helm/charts/ingress-nginx-4.13.0.tgz \
+                --namespace ingress-nginx \
+                --set controller.metrics.enabled=true \
+                --set controller.podAnnotations."prometheus\.io/scrape"="true" \
+                --set controller.podAnnotations."prometheus\.io/port"="10254"
+            else
+              echo "🚀 Installing new Ingress Controller..."
+              helm install ingress ./helm/charts/ingress-nginx-4.13.0.tgz \
+                --namespace ingress-nginx \
+                --create-namespace \
+                --set controller.metrics.enabled=true \
+                --set controller.podAnnotations."prometheus\.io/scrape"="true" \
+                --set controller.podAnnotations."prometheus\.io/port"="10254"
+            fi
+
+            echo "⏳ Waiting for Ingress Controller to be ready..."
+            kubectl wait --namespace ingress-nginx \
+              --for=condition=ready pod \
+              --selector=app.kubernetes.io/component=controller \
+              --timeout=300s
+
+      - name: 📊 Install Prometheus & Grafana
+        if: ${{ !github.event.inputs.skip_monitoring }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "📊 Setting up monitoring namespace..."
+            export MONITORING_NS=monitoring
+            kubectl create namespace $MONITORING_NS || echo "Namespace already exists"
+
+            echo "📊 Adding Prometheus Helm repository..."
+            helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+            helm repo update
+
+            # Check if monitoring release already exists
+            if helm list -n $MONITORING_NS | grep -q "^monitoring"; then
+              echo "✅ Monitoring stack already installed, upgrading..."
+              helm upgrade monitoring prometheus-community/kube-prometheus-stack \
+                --namespace $MONITORING_NS \
+                --timeout 10m \
+                --wait || echo "Monitoring stack upgrade completed"
+            else
+              echo "🚀 Installing new monitoring stack..."
+              helm install monitoring prometheus-community/kube-prometheus-stack \
+                --namespace $MONITORING_NS \
+                --timeout 10m \
+                --wait || echo "Monitoring stack installation completed"
+            fi
+
+      - name: 📈 Setup Ingress Controller Monitoring
+        if: ${{ !github.event.inputs.skip_monitoring }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "📈 Creating service monitor for Ingress Controller..."
+            cd ~/oumla-devops-task
+            kubectl apply -f ./k8s/manifests/ingress-controller-service-monitor.yml
+
+      - name: 🌐 Apply Ingress Manifests
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "🌐 Applying ingress manifests for external access..."
+            cd ~/oumla-devops-task
+            kubectl apply -f k8s/manifests/ingress.yml
+
+            echo "⏳ Waiting for ingress to be ready..."
+            sleep 10
+            kubectl get ingress -A
+
+      - name: 📋 Display Service Status
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "📋 Cluster Services Status:"
+            echo "================================"
+
+            echo "🎡 Helm version:"
+            helm version --short
+
+            if [[ "${{ github.event.inputs.skip_argocd }}" != "true" ]]; then
+              echo ""
+              echo "🚀 ArgoCD status:"
+              kubectl get pods -n argocd
+            fi
+
+            echo ""
+            echo "📈 VPA status:"
+            kubectl get vpa
+
+            echo ""
+            echo "🌐 Ingress Controller status:"
+            kubectl get pods -n ingress-nginx
+
+            if [[ "${{ github.event.inputs.skip_monitoring }}" != "true" ]]; then
+              echo ""
+              echo "📊 Monitoring status:"
+              kubectl get pods -n monitoring
+            fi
+
+            echo ""
+            echo "🎯 All services installed successfully!"
+
+      - name: 📝 Display Access Information
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "📝 Access Information:"
+            echo "====================="
+
+            # Get LoadBalancer IP for Ingress Controller
+            echo "🔍 Getting Ingress Controller External IP..."
+            INGRESS_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+            if [ -z "$INGRESS_IP" ] || [ "$INGRESS_IP" = "null" ]; then
+              INGRESS_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.externalIPs[0]}' 2>/dev/null)
+            fi
+            if [ -z "$INGRESS_IP" ] || [ "$INGRESS_IP" = "null" ]; then
+              INGRESS_IP="<pending-external-ip>"
+            fi
+
+            echo "🌐 Ingress Controller External IP: $INGRESS_IP"
+            echo ""
+
+            if [[ "${{ github.event.inputs.skip_argocd }}" != "true" ]]; then
+              echo "🚀 ArgoCD Access:"
+              if [ "$INGRESS_IP" != "<pending-external-ip>" ]; then
+                echo "  - URL: https://argocd.$INGRESS_IP.nip.io"
+                echo "  - Apply ingress: kubectl apply -f k8s/manifests/ingress.yml"
+              else
+                echo "  - URL: https://argocd.<INGRESS_IP>.nip.io (once IP is assigned)"
+              fi
+              echo "  - Username: admin"
+              echo "  - Get Password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
+              echo ""
+            fi
+
+            if [[ "${{ github.event.inputs.skip_monitoring }}" != "true" ]]; then
+              echo "📊 Grafana Access:"
+              if [ "$INGRESS_IP" != "<pending-external-ip>" ]; then
+                echo "  - URL: http://grafana.$INGRESS_IP.nip.io"
+                echo "  - Create ingress manifest for Grafana service"
+              else
+                echo "  - URL: http://grafana.<INGRESS_IP>.nip.io (once IP is assigned)"
+              fi
+              echo "  - Username: admin"
+              echo "  - Get Password: kubectl get secret monitoring-grafana -n monitoring -o jsonpath='{.data.admin-password}' | base64 -d"
+              echo ""
+            fi
+
+            echo "⛓️ Geth Service Access:"
+            if [ "$INGRESS_IP" != "<pending-external-ip>" ]; then
+              echo "  - JSON-RPC URL: http://geth.$INGRESS_IP.nip.io"
+              echo "  - WebSocket URL: ws://geth.$INGRESS_IP.nip.io"
+            else
+              echo "  - JSON-RPC URL: http://geth.<INGRESS_IP>.nip.io (once IP is assigned)"
+              echo "  - WebSocket URL: ws://geth.<INGRESS_IP>.nip.io (once IP is assigned)"
+            fi
+            echo ""
+
+            echo "🎯 Next Steps:"
+            echo "=============="
+            echo "1. Apply ingress manifests: kubectl apply -f k8s/manifests/ingress.yml"
+            echo "2. Wait for LoadBalancer IP assignment (if pending)"
+            echo "3. Update ingress manifests with actual IP if needed"
+            echo "4. Access services via the URLs above"
+            echo ""
+            echo "📈 VPA: Monitoring Geth pod for vertical scaling recommendations"
+            echo "🌐 Ingress Controller: Ready to route traffic via nip.io domains"
+            echo ""
+            echo "🎯 Setup completed! Your production cluster is accessible externally."

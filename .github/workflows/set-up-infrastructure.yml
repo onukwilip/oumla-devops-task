@@ -8,11 +8,16 @@ on:
         required: true
         type: boolean
         default: true
+      initial_setup:
+        description: "Run initial cluster services setup after infrastructure deployment"
+        required: true
+        type: boolean
+        default: true
       worker_count:
         description: "Number of worker nodes to create"
         required: true
         type: number
-        default: 2
+        default: 5
 
 env:
   PROJECT_ID: ${{ vars.PROJECT_ID }}
@@ -352,9 +357,55 @@ jobs:
           key: ${{ env.MASTER_SSH_KEY }}
           script: |
             echo "🚀 Setting up Vertical Pod Autoscaler..."
-            
+
             # Make script executable and run it
             chmod +x ~/oumla-devops-task/k8s/setup/setup-vpa.sh
             ~/oumla-devops-task/k8s/setup/setup-vpa.sh
-            
+
             echo "✅ VPA setup completed! Ready for Geth autoscaling."
+
+  trigger-services-setup:
+    name: 🚀 Trigger Cluster Services Setup
+    needs: [setup-vpa, create-vms]
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.initial_setup == 'true' }}
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🚀 Trigger Services Setup Workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            console.log('🚀 Triggering cluster services setup workflow...');
+
+            const result = await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'setup-cluster-services.yml',
+              ref: 'main',
+              inputs: {
+                skip_argocd: 'false',
+                skip_monitoring: 'false'
+              }
+            });
+
+            console.log('✅ Services setup workflow triggered successfully!');
+            console.log('🎯 Your cluster will be fully configured automatically.');
+
+      - name: 📋 Infrastructure Setup Complete
+        run: |
+          echo "🎉 Infrastructure Setup Complete!"
+          echo "================================"
+          echo "✅ Kubernetes cluster deployed and configured"
+          echo "✅ VPA installed for autoscaling"
+          echo "🚀 Services setup workflow triggered"
+          echo ""
+          echo "📋 Next Steps (Automated):"
+          echo "1. ArgoCD installation and configuration"
+          echo "2. Ingress controller setup with external access"
+          echo "3. Prometheus & Grafana monitoring stack"
+          echo "4. Service ingress configuration"
+          echo ""
+          echo "🎯 Your cluster will be production-ready in a few minutes!"
