@@ -11,15 +11,23 @@ Instead of burning money on Google's expensive Kubernetes service, this project 
 - Save **60-70% on hosting costs** compared to managed solutions
 - Get the same reliability as enterprise setups
 
-### 🔗 Live Demo
+### 🔗 Real Cost Comparison
 
-> **[See How Much You Can Save](https://demo.link)** - Real cost comparison showing exactly how much money you'll save
->
-> _(Coming soon: detailed breakdown of actual monthly costs)_
+> **See the actual pricing difference between Google's managed Kubernetes vs our self-managed approach:**
+
+#### Google Kubernetes Engine (GKE) - Managed Service ~$220/month
+
+![GKE Pricing](./assets/Google-Cloud-Pricing-Calculator-24-07-2025_04_02_AM.png)
+
+#### Self-Managed Kubernetes on GCE VMs - Our Approach ~$150/month. SAVE $70+/month
+
+![Self-Managed K8s Pricing](./assets/Google-Cloud-Pricing-Calculator-24-07-2025_04_03_AM.png)
+
+**The numbers don't lie**: These screenshots from Google's own pricing calculator show how much you can save by running your own Kubernetes cluster on regular virtual machines, than using managed Kubernetes service
 
 ---
 
-## 🤔 Why Can't You Just Use Regular Virtual Machines?
+## 🤔 Why Can't You Just Use Regular Virtual Machines (without Kubernetes at all)?
 
 ### The Expensive Problem with Auto-Scaling VMs
 
@@ -49,7 +57,7 @@ Here's exactly what you'll pay each month for running 5 Ethereum nodes:
 
 | What You're Paying For   | Google's Managed Service | This DIY Approach | Your Savings      |
 | ------------------------ | ------------------------ | ----------------- | ----------------- |
-| **Monthly Hosting Bill** | $800-1200                | $200-400          | **$600-800**      |
+| **Monthly Hosting Bill** | $220                     | $150              | **$70**           |
 | **Setup Difficulty**     | Click a button           | Follow this guide | Worth the effort! |
 | **Control Over System**  | Limited                  | Full control      | Priceless         |
 
