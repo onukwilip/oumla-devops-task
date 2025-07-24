@@ -155,8 +155,8 @@ jobs:
 
             # Apply ingress manifests with IP substitution
             echo "🌐 Applying ingress manifests with LoadBalancer IP..."
-            envsubst < k8s/manifests/ingress.yml > k8s/manifests/ingress-applied.yml
-            kubectl apply -f k8s/manifests/ingress-applied.yml
+            envsubst < ./k8s/manifests/ingress.yml > ./k8s/manifests/ingress-applied.yml
+            kubectl apply -f ./k8s/manifests/ingress-applied.yml
 
       - name: 📊 Install Prometheus & Grafana
         if: ${{ github.event.inputs.skip_monitoring != 'true' }}
