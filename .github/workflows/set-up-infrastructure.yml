@@ -376,7 +376,7 @@ jobs:
       - name: 🚀 Trigger Services Setup Workflow
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.WORKFLOW_TOKEN }}
           script: |
             console.log('🚀 Triggering cluster services setup workflow...');
 
