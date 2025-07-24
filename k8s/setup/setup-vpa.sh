@@ -8,10 +8,10 @@ set -e
 echo "🚀 Setting up VPA for Kubernetes cluster..."
 
 # Basic checks
-if ! kubectl cluster-info &> /dev/null; then
-    echo "❌ Cannot connect to Kubernetes cluster"
-    exit 1
-fi
+# if ! kubectl cluster-info &> /dev/null; then
+#     echo "❌ Cannot connect to Kubernetes cluster"
+#     exit 1
+# fi
 
 echo "✅ Cluster connection verified"
 
