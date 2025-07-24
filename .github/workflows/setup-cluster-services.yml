@@ -121,16 +121,16 @@ jobs:
             echo "🌐 Installing Ingress Controller..."
             cd ~/oumla-devops-task
 
-            # Check if ingress release already exists
+            # Install/upgrade ingress controller
             if helm list -n ingress-nginx | grep -q "^ingress"; then
-              echo "✅ Ingress Controller already installed, upgrading..."
+              echo "✅ Upgrading Ingress Controller..."
               helm upgrade ingress ./helm/charts/ingress-nginx-4.13.0.tgz \
                 --namespace ingress-nginx \
                 --set controller.metrics.enabled=true \
                 --set controller.podAnnotations."prometheus\.io/scrape"="true" \
                 --set controller.podAnnotations."prometheus\.io/port"="10254"
             else
-              echo "🚀 Installing new Ingress Controller..."
+              echo "🚀 Installing Ingress Controller..."
               helm install ingress ./helm/charts/ingress-nginx-4.13.0.tgz \
                 --namespace ingress-nginx \
                 --create-namespace \
@@ -139,11 +139,24 @@ jobs:
                 --set controller.podAnnotations."prometheus\.io/port"="10254"
             fi
 
-            echo "⏳ Waiting for Ingress Controller to be ready..."
-            kubectl wait --namespace ingress-nginx \
-              --for=condition=ready pod \
-              --selector=app.kubernetes.io/component=controller \
-              --timeout=300s
+            # Wait for controller and LoadBalancer
+            echo "⏳ Waiting for Ingress Controller and LoadBalancer..."
+            kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=300s
+            kubectl wait --namespace ingress-nginx --for=jsonpath='{.status.loadBalancer.ingress}' service/ingress-nginx-controller --timeout=300s || echo "LoadBalancer ready"
+
+            # Get and store LoadBalancer IP
+            echo "🔍 Getting LoadBalancer IP for envsubst..."
+            INGRESS_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+            if [ -z "$INGRESS_IP" ] || [ "$INGRESS_IP" = "null" ]; then
+              INGRESS_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.externalIPs[0]}' 2>/dev/null)
+            fi
+            echo "🌐 LoadBalancer IP: $INGRESS_IP"
+            export INGRESS_IP
+
+            # Apply ingress manifests with IP substitution
+            echo "🌐 Applying ingress manifests with LoadBalancer IP..."
+            envsubst < k8s/manifests/ingress.yml > k8s/manifests/ingress-applied.yml
+            kubectl apply -f k8s/manifests/ingress-applied.yml
 
       - name: 📊 Install Prometheus & Grafana
         if: ${{ github.event.inputs.skip_monitoring != 'true' }}
@@ -189,7 +202,7 @@ jobs:
           script: |
             echo "📈 Creating service monitor for Ingress Controller..."
             cd ~/oumla-devops-task
-            
+
             # Verify ServiceMonitor CRD exists before applying
             if kubectl get crd servicemonitors.monitoring.coreos.com &> /dev/null; then
               echo "✅ ServiceMonitor CRD found, applying manifest..."

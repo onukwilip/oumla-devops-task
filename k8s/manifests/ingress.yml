@@ -7,7 +7,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: geth.34.44.192.178.nip.io
+  - host: geth.${INGRESS_IP}.nip.io
     http:
       paths:
       - path: /
@@ -31,7 +31,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: argocd.34.44.192.178.nip.io
+  - host: argocd.${INGRESS_IP}.nip.io
     http:
       paths:
       - path: /
