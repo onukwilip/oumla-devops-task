@@ -2,7 +2,7 @@ resource "google_compute_instance_template" "k8s_master_node" {
   name         = "k8s-master-node"
   description  = "The instance template for the Kubernetes master node"
   region       = var.region
-  machine_type = "e2-small"
+  machine_type = "e2-medium"
 
   tags = [
     "control-plane-node",
