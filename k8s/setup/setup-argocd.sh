@@ -20,6 +20,8 @@ echo "⏳ Waiting for ArgoCD to be ready..."
 kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd || true
 kubectl wait --for=condition=available --timeout=300s deployment/argocd-repo-server -n argocd || true
 
+kubectl apply -f ./k8s/manifests/argocd/application.yml
+
 echo "✅ ArgoCD installation completed!"
 echo ""
 echo "📝 Access Information:"
