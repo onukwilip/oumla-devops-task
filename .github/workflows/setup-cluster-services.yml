@@ -167,6 +167,10 @@ jobs:
             echo "🌐 LoadBalancer IP: $INGRESS_IP"
             export INGRESS_IP
 
+            echo "📊 Setting up monitoring namespace..."
+            export MONITORING_NS=monitoring
+            kubectl create namespace $MONITORING_NS || echo "Namespace already exists"
+
             # Apply ingress manifests with IP substitution
             echo "🌐 Applying ingress manifests with LoadBalancer IP..."
             envsubst < k8s/manifests/ingress.yml > /tmp/ingress-applied.yml
