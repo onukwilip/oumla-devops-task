@@ -189,22 +189,18 @@ jobs:
             kubectl create namespace $MONITORING_NS || echo "Namespace already exists"
 
             echo "📊 Adding Prometheus Helm repository..."
-            helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-            helm repo update
+            sudo -E helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+            sudo -E helm repo update
 
             # Check if monitoring release already exists
             if helm list -n $MONITORING_NS | grep -q "^monitoring"; then
               echo "✅ Monitoring stack already installed, upgrading..."
-              helm upgrade monitoring prometheus-community/kube-prometheus-stack \
-                --namespace $MONITORING_NS \
-                --timeout 10m \
-                --wait
+              sudo -E helm upgrade monitoring prometheus-community/kube-prometheus-stack \
+                --namespace $MONITORING_NS
             else
               echo "🚀 Installing new monitoring stack..."
-              helm install monitoring prometheus-community/kube-prometheus-stack \
-                --namespace $MONITORING_NS \
-                --timeout 10m \
-                --wait
+              sudo -E helm install monitoring prometheus-community/kube-prometheus-stack \
+                --namespace $MONITORING_NS
             fi
 
             echo "⏳ Waiting for Prometheus CRDs to be ready..."
