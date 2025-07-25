@@ -13,6 +13,11 @@ on:
         required: false
         type: boolean
         default: false
+      upgrade_ingress:
+        description: "Upgrade Ingress Controller if already installed"
+        required: false
+        type: boolean
+        default: false
 
   workflow_call:
     inputs:
@@ -23,6 +28,11 @@ on:
         default: false
       skip_monitoring:
         description: "Skip Prometheus/Grafana installation"
+        required: false
+        type: boolean
+        default: false
+      upgrade_ingress:
+        description: "Upgrade Ingress Controller if already installed"
         required: false
         type: boolean
         default: false
@@ -123,12 +133,16 @@ jobs:
 
             # Install/upgrade ingress controller
             if helm list -n ingress-nginx | grep -q "^ingress"; then
-              echo "✅ Upgrading Ingress Controller..."
-              helm upgrade ingress ./helm/charts/ingress-nginx-4.13.0.tgz \
-                --namespace ingress-nginx \
-                --set controller.metrics.enabled=true \
-                --set controller.podAnnotations."prometheus\.io/scrape"="true" \
-                --set controller.podAnnotations."prometheus\.io/port"="10254"
+              if [[ "${{ github.event.inputs.upgrade_ingress }}" == "true" ]]; then
+                echo "✅ Upgrading Ingress Controller..."
+                helm upgrade ingress ./helm/charts/ingress-nginx-4.13.0.tgz \
+                  --namespace ingress-nginx \
+                  --set controller.metrics.enabled=true \
+                  --set controller.podAnnotations."prometheus\.io/scrape"="true" \
+                  --set controller.podAnnotations."prometheus\.io/port"="10254"
+              else
+                echo "✅ Ingress Controller already installed, skipping upgrade (use upgrade_ingress=true to force upgrade)"
+              fi
             else
               echo "🚀 Installing Ingress Controller..."
               helm install ingress ./helm/charts/ingress-nginx-4.13.0.tgz \
@@ -155,8 +169,8 @@ jobs:
 
             # Apply ingress manifests with IP substitution
             echo "🌐 Applying ingress manifests with LoadBalancer IP..."
-            envsubst < ./k8s/manifests/ingress.yml > ./k8s/manifests/ingress-applied.yml
-            kubectl apply -f ./k8s/manifests/ingress-applied.yml
+            envsubst < k8s/manifests/ingress.yml > /tmp/ingress-applied.yml
+            kubectl apply -f /tmp/ingress-applied.yml
 
       - name: 📊 Install Prometheus & Grafana
         if: ${{ github.event.inputs.skip_monitoring != 'true' }}
