@@ -198,17 +198,17 @@ jobs:
               helm upgrade monitoring prometheus-community/kube-prometheus-stack \
                 --namespace $MONITORING_NS \
                 --timeout 10m \
-                --wait || echo "Monitoring stack upgrade completed"
+                --wait
             else
               echo "🚀 Installing new monitoring stack..."
               helm install monitoring prometheus-community/kube-prometheus-stack \
                 --namespace $MONITORING_NS \
                 --timeout 10m \
-                --wait || echo "Monitoring stack installation completed"
+                --wait
             fi
 
             echo "⏳ Waiting for Prometheus CRDs to be ready..."
-            kubectl wait --for condition=established --timeout=300s crd/servicemonitors.monitoring.coreos.com || echo "ServiceMonitor CRD check completed"
+            kubectl wait --for condition=established --timeout=300s crd/servicemonitors.monitoring.coreos.com
 
       - name: 📈 Setup Ingress Controller Monitoring
         if: ${{ github.event.inputs.skip_monitoring != 'true' }}
