@@ -142,13 +142,13 @@ jobs:
             # Wait for controller and LoadBalancer
             echo "⏳ Waiting for Ingress Controller and LoadBalancer..."
             kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=300s
-            kubectl wait --namespace ingress-nginx --for=jsonpath='{.status.loadBalancer.ingress}' service/ingress-nginx-controller --timeout=300s || echo "LoadBalancer ready"
+            kubectl wait --namespace ingress-nginx --for=jsonpath='{.status.loadBalancer.ingress}' service/ingress-ingress-nginx-controller --timeout=300s || echo "LoadBalancer ready"
 
             # Get and store LoadBalancer IP
             echo "🔍 Getting LoadBalancer IP for envsubst..."
-            INGRESS_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+            INGRESS_IP=$(kubectl get svc ingress-ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
             if [ -z "$INGRESS_IP" ] || [ "$INGRESS_IP" = "null" ]; then
-              INGRESS_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.externalIPs[0]}' 2>/dev/null)
+              INGRESS_IP=$(kubectl get svc ingress-ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.externalIPs[0]}' 2>/dev/null)
             fi
             echo "🌐 LoadBalancer IP: $INGRESS_IP"
             export INGRESS_IP
@@ -275,9 +275,9 @@ jobs:
 
             # Get LoadBalancer IP for Ingress Controller
             echo "🔍 Getting Ingress Controller External IP..."
-            INGRESS_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+            INGRESS_IP=$(kubectl get svc ingress-ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
             if [ -z "$INGRESS_IP" ] || [ "$INGRESS_IP" = "null" ]; then
-              INGRESS_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.externalIPs[0]}' 2>/dev/null)
+              INGRESS_IP=$(kubectl get svc ingress-ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.externalIPs[0]}' 2>/dev/null)
             fi
             if [ -z "$INGRESS_IP" ] || [ "$INGRESS_IP" = "null" ]; then
               INGRESS_IP="<pending-external-ip>"
