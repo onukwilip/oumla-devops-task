@@ -1,4 +1,7 @@
 grafana:
+  # Ensure default data sources are preserved
+  defaultDashboardsEnabled: true
+  # Add Loki as additional data source
   additionalDataSources:
   - name: Loki
     type: loki
@@ -10,3 +13,12 @@ grafana:
       maxLines: 1000
       httpMethod: GET
     secureJsonData: {}
+
+# Ensure Prometheus components are properly configured
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+
+# Ensure AlertManager is enabled
+alertmanager:
+  enabled: true
