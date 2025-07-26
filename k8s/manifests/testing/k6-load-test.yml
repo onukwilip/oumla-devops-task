@@ -23,7 +23,7 @@ data:
       },
     };
 
-    const BASE_URL = 'http://geth.35.192.223.157.nip.io';
+    const BASE_URL = 'http://geth.34.9.26.240.nip.io';
 
     export default function() {
       // Test 1: Get latest block number
