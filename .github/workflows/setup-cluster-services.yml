@@ -196,146 +196,146 @@ jobs:
             envsubst < k8s/manifests/ingress.yml > /tmp/ingress-applied.yml
             kubectl apply -f /tmp/ingress-applied.yml
 
-      - name: 📊 Install Prometheus & Grafana
-        if: ${{ github.event.inputs.skip_monitoring != 'true' }}
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ steps.master-ip.outputs.master_ip }}
-          username: ${{ env.SSH_USER }}
-          key: ${{ env.MASTER_SSH_KEY }}
-          script: |
-            echo "📊 Setting up monitoring namespace..."
-            export MONITORING_NS=monitoring
-            kubectl create namespace $MONITORING_NS || echo "Namespace already exists"
-
-            echo "📊 Adding Prometheus Helm repository..."
-            sudo -E helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-            sudo -E helm repo update
-
-            # Check if monitoring release already exists
-            if sudo -E helm list -n $MONITORING_NS | grep -q "^monitoring"; then
-              echo "✅ Monitoring stack already installed, upgrading..."
-              sudo -E helm upgrade monitoring prometheus-community/kube-prometheus-stack \
-                --namespace $MONITORING_NS \
-                -f ./oumla-devops-task/helm/values/kube-prometheus-stack.yml
-            else
-              echo "🚀 Installing new monitoring stack..."
-              sudo -E helm install monitoring prometheus-community/kube-prometheus-stack \
-                --namespace $MONITORING_NS \
-                -f ./oumla-devops-task/helm/values/kube-prometheus-stack.yml
-            fi
-
-            echo "⏳ Waiting for Prometheus CRDs to be ready..."
-            kubectl wait --for condition=established --timeout=300s crd/servicemonitors.monitoring.coreos.com
-
-      - name: 🧾 Install Loki Logging Stack
-        if: ${{ github.event.inputs.skip_loki != 'true' }}
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ steps.master-ip.outputs.master_ip }}
-          username: ${{ env.SSH_USER }}
-          key: ${{ env.MASTER_SSH_KEY }}
-          script: |
-            echo "📋 Installing Loki logging stack..."
-            export MONITORING_NS=monitoring
-            kubectl create namespace $MONITORING_NS || echo "Namespace already exists"
-
-            echo "📋 Adding Grafana Helm repository..."
-            sudo -E helm repo add grafana https://grafana.github.io/helm-charts
-            sudo -E helm repo update
-
-            # Check if Loki stack already exists
-            if sudo -E helm list -n $MONITORING_NS | grep -q "^loki"; then
-              echo "✅ Loki stack already installed, upgrading..."
-              sudo -E helm upgrade loki grafana/loki-stack \
-                --namespace $MONITORING_NS \
-                --set grafana.enabled=false \
-                --set prometheus.enabled=false \
-                --set promtail.enabled=true
-            else
-              echo "🚀 Installing new Loki stack..."
-              sudo -E helm install loki grafana/loki-stack \
-                --namespace $MONITORING_NS \
-                --set grafana.enabled=false \
-                --set prometheus.enabled=false \
-                --set promtail.enabled=true
-            fi
-
-            echo "⏳ Waiting for Loki components to be ready..."
-            kubectl wait --for=condition=ready pod -l app=loki -n $MONITORING_NS --timeout=300s || echo "Loki ready"
-            kubectl wait --for=condition=ready pod -l app=promtail -n $MONITORING_NS --timeout=300s || echo "Promtail ready"
-
-            echo "✅ Loki logging stack installation completed!"
-
-      - name: 📈 Setup Ingress Controller Monitoring
-        if: ${{ github.event.inputs.skip_monitoring != 'true' }}
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ steps.master-ip.outputs.master_ip }}
-          username: ${{ env.SSH_USER }}
-          key: ${{ env.MASTER_SSH_KEY }}
-          script: |
-            echo "📈 Creating service monitor for Ingress Controller..."
-            cd ~/oumla-devops-task
-
-            # Verify ServiceMonitor CRD exists before applying
-            if kubectl get crd servicemonitors.monitoring.coreos.com &> /dev/null; then
-              echo "✅ ServiceMonitor CRD found, applying manifest..."
-              kubectl apply -f ./k8s/manifests/ingress-controller-service-monitor.yml
-            else
-              echo "⚠️  ServiceMonitor CRD not found, skipping ingress monitoring setup"
-              echo "💡 You can apply this later: kubectl apply -f ./k8s/manifests/ingress-controller-service-monitor.yml"
-            fi
-
-      # - name: 🎛️ Install Rancher Dashboard
-      #   if: ${{ github.event.inputs.skip_rancher != 'true' }}
+      # - name: 📊 Install Prometheus & Grafana
+      #   if: ${{ github.event.inputs.skip_monitoring != 'true' }}
       #   uses: appleboy/ssh-action@v1.0.3
       #   with:
       #     host: ${{ steps.master-ip.outputs.master_ip }}
       #     username: ${{ env.SSH_USER }}
       #     key: ${{ env.MASTER_SSH_KEY }}
       #     script: |
-      #       echo "🎛️ Installing Rancher Dashboard..."
+      #       echo "📊 Setting up monitoring namespace..."
+      #       export MONITORING_NS=monitoring
+      #       kubectl create namespace $MONITORING_NS || echo "Namespace already exists"
 
-      #       echo "📋 Adding Rancher and Jetstack Helm repositories..."
-      #       sudo -E helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
-      #       sudo -E helm repo add jetstack https://charts.jetstack.io
+      #       echo "📊 Adding Prometheus Helm repository..."
+      #       sudo -E helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
       #       sudo -E helm repo update
 
-      #       # Check if cert-manager already exists
-      #       if sudo -E helm list -n cert-manager | grep -q "^cert-manager"; then
-      #         echo "✅ cert-manager already installed, skipping..."
+      #       # Check if monitoring release already exists
+      #       if sudo -E helm list -n $MONITORING_NS | grep -q "^monitoring"; then
+      #         echo "✅ Monitoring stack already installed, upgrading..."
+      #         sudo -E helm upgrade monitoring prometheus-community/kube-prometheus-stack \
+      #           --namespace $MONITORING_NS \
+      #           -f ./oumla-devops-task/helm/values/kube-prometheus-stack.yml
       #       else
-      #         echo "🔐 Installing cert-manager..."
-      #         sudo -E helm install cert-manager jetstack/cert-manager \
-      #           --namespace cert-manager \
-      #           --create-namespace \
-      #           --set installCRDs=true
-
-      #         echo "⏳ Waiting for cert-manager to be ready..."
-      #         kubectl wait --for=condition=ready pod -l app=cert-manager -n cert-manager --timeout=300s || echo "cert-manager ready"
+      #         echo "🚀 Installing new monitoring stack..."
+      #         sudo -E helm install monitoring prometheus-community/kube-prometheus-stack \
+      #           --namespace $MONITORING_NS \
+      #           -f ./oumla-devops-task/helm/values/kube-prometheus-stack.yml
       #       fi
 
-      #       # Check if Rancher already exists
-      #       if sudo -E helm list -n cattle-system | grep -q "^rancher"; then
-      #         echo "✅ Rancher already installed, upgrading..."
-      #         sudo -E helm upgrade rancher rancher-latest/rancher \
-      #           --namespace cattle-system \
-      #           --set hostname=rancher.your-domain.com \
-      #           --set bootstrapPassword=admin
+      #       echo "⏳ Waiting for Prometheus CRDs to be ready..."
+      #       kubectl wait --for condition=established --timeout=300s crd/servicemonitors.monitoring.coreos.com
+
+      # - name: 🧾 Install Loki Logging Stack
+      #   if: ${{ github.event.inputs.skip_loki != 'true' }}
+      #   uses: appleboy/ssh-action@v1.0.3
+      #   with:
+      #     host: ${{ steps.master-ip.outputs.master_ip }}
+      #     username: ${{ env.SSH_USER }}
+      #     key: ${{ env.MASTER_SSH_KEY }}
+      #     script: |
+      #       echo "📋 Installing Loki logging stack..."
+      #       export MONITORING_NS=monitoring
+      #       kubectl create namespace $MONITORING_NS || echo "Namespace already exists"
+
+      #       echo "📋 Adding Grafana Helm repository..."
+      #       sudo -E helm repo add grafana https://grafana.github.io/helm-charts
+      #       sudo -E helm repo update
+
+      #       # Check if Loki stack already exists
+      #       if sudo -E helm list -n $MONITORING_NS | grep -q "^loki"; then
+      #         echo "✅ Loki stack already installed, upgrading..."
+      #         sudo -E helm upgrade loki grafana/loki-stack \
+      #           --namespace $MONITORING_NS \
+      #           --set grafana.enabled=false \
+      #           --set prometheus.enabled=false \
+      #           --set promtail.enabled=true
       #       else
-      #         echo "🚀 Installing new Rancher..."
-      #         sudo -E helm install rancher rancher-latest/rancher \
-      #           --namespace cattle-system \
-      #           --create-namespace \
-      #           --set hostname=rancher.your-domain.com \
-      #           --set bootstrapPassword=admin
+      #         echo "🚀 Installing new Loki stack..."
+      #         sudo -E helm install loki grafana/loki-stack \
+      #           --namespace $MONITORING_NS \
+      #           --set grafana.enabled=false \
+      #           --set prometheus.enabled=false \
+      #           --set promtail.enabled=true
       #       fi
 
-      #       echo "⏳ Waiting for Rancher components to be ready..."
-      #       kubectl wait --for=condition=ready pod -l app=rancher -n cattle-system --timeout=300s || echo "Rancher ready"
+      #       echo "⏳ Waiting for Loki components to be ready..."
+      #       kubectl wait --for=condition=ready pod -l app=loki -n $MONITORING_NS --timeout=300s || echo "Loki ready"
+      #       kubectl wait --for=condition=ready pod -l app=promtail -n $MONITORING_NS --timeout=300s || echo "Promtail ready"
 
-      #       echo "✅ Rancher Dashboard installation completed!"
+      #       echo "✅ Loki logging stack installation completed!"
+
+      # - name: 📈 Setup Ingress Controller Monitoring
+      #   if: ${{ github.event.inputs.skip_monitoring != 'true' }}
+      #   uses: appleboy/ssh-action@v1.0.3
+      #   with:
+      #     host: ${{ steps.master-ip.outputs.master_ip }}
+      #     username: ${{ env.SSH_USER }}
+      #     key: ${{ env.MASTER_SSH_KEY }}
+      #     script: |
+      #       echo "📈 Creating service monitor for Ingress Controller..."
+      #       cd ~/oumla-devops-task
+
+      #       # Verify ServiceMonitor CRD exists before applying
+      #       if kubectl get crd servicemonitors.monitoring.coreos.com &> /dev/null; then
+      #         echo "✅ ServiceMonitor CRD found, applying manifest..."
+      #         kubectl apply -f ./k8s/manifests/ingress-controller-service-monitor.yml
+      #       else
+      #         echo "⚠️  ServiceMonitor CRD not found, skipping ingress monitoring setup"
+      #         echo "💡 You can apply this later: kubectl apply -f ./k8s/manifests/ingress-controller-service-monitor.yml"
+      #       fi
+
+      - name: 🎛️ Install Rancher Dashboard
+        if: ${{ github.event.inputs.skip_rancher != 'true' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "🎛️ Installing Rancher Dashboard..."
+
+            echo "📋 Adding Rancher and Jetstack Helm repositories..."
+            sudo -E helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
+            sudo -E helm repo add jetstack https://charts.jetstack.io
+            sudo -E helm repo update
+
+            # Check if cert-manager already exists
+            if sudo -E helm list -n cert-manager | grep -q "^cert-manager"; then
+              echo "✅ cert-manager already installed, skipping..."
+            else
+              echo "🔐 Installing cert-manager..."
+              sudo -E helm install cert-manager jetstack/cert-manager \
+                --namespace cert-manager \
+                --create-namespace \
+                --set installCRDs=true
+
+              echo "⏳ Waiting for cert-manager to be ready..."
+              kubectl wait --for=condition=ready pod -l app=cert-manager -n cert-manager --timeout=300s || echo "cert-manager ready"
+            fi
+
+            # Check if Rancher already exists
+            if sudo -E helm list -n cattle-system | grep -q "^rancher"; then
+              echo "✅ Rancher already installed, upgrading..."
+              sudo -E helm upgrade rancher rancher-latest/rancher \
+                --namespace cattle-system \
+                --set hostname=rancher.your-domain.com \
+                --set bootstrapPassword=admin
+            else
+              echo "🚀 Installing new Rancher..."
+              sudo -E helm install rancher rancher-latest/rancher \
+                --namespace cattle-system \
+                --create-namespace \
+                --set hostname=rancher.your-domain.com \
+                --set bootstrapPassword=admin
+            fi
+
+            echo "⏳ Waiting for Rancher components to be ready..."
+            kubectl wait --for=condition=ready pod -l app=rancher -n cattle-system --timeout=300s || echo "Rancher ready"
+
+            echo "✅ Rancher Dashboard installation completed!"
 
       - name: 📋 Display Service Status
         uses: appleboy/ssh-action@v1.0.3
