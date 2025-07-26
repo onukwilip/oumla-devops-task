@@ -323,9 +323,7 @@ helm install loki grafana/loki-stack \
   --namespace monitoring \
   --set grafana.enabled=false \
   --set prometheus.enabled=false \
-  --set promtail.enabled=true \
-  --set loki.persistence.enabled=true \
-  --set loki.persistence.size=10Gi
+  --set promtail.enabled=true
 ```
 
 ## COMMONLY USED COMMANDS
