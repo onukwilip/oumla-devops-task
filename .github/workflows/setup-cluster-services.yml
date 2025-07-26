@@ -287,55 +287,55 @@ jobs:
               echo "💡 You can apply this later: kubectl apply -f ./k8s/manifests/ingress-controller-service-monitor.yml"
             fi
 
-      - name: 🎛️ Install Rancher Dashboard
-        if: ${{ github.event.inputs.skip_rancher != 'true' }}
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ steps.master-ip.outputs.master_ip }}
-          username: ${{ env.SSH_USER }}
-          key: ${{ env.MASTER_SSH_KEY }}
-          script: |
-            echo "🎛️ Installing Rancher Dashboard..."
+      # - name: 🎛️ Install Rancher Dashboard
+      #   if: ${{ github.event.inputs.skip_rancher != 'true' }}
+      #   uses: appleboy/ssh-action@v1.0.3
+      #   with:
+      #     host: ${{ steps.master-ip.outputs.master_ip }}
+      #     username: ${{ env.SSH_USER }}
+      #     key: ${{ env.MASTER_SSH_KEY }}
+      #     script: |
+      #       echo "🎛️ Installing Rancher Dashboard..."
 
-            echo "📋 Adding Rancher and Jetstack Helm repositories..."
-            sudo -E helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
-            sudo -E helm repo add jetstack https://charts.jetstack.io
-            sudo -E helm repo update
+      #       echo "📋 Adding Rancher and Jetstack Helm repositories..."
+      #       sudo -E helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
+      #       sudo -E helm repo add jetstack https://charts.jetstack.io
+      #       sudo -E helm repo update
 
-            # Check if cert-manager already exists
-            if sudo -E helm list -n cert-manager | grep -q "^cert-manager"; then
-              echo "✅ cert-manager already installed, skipping..."
-            else
-              echo "🔐 Installing cert-manager..."
-              sudo -E helm install cert-manager jetstack/cert-manager \
-                --namespace cert-manager \
-                --create-namespace \
-                --set installCRDs=true
-              
-              echo "⏳ Waiting for cert-manager to be ready..."
-              kubectl wait --for=condition=ready pod -l app=cert-manager -n cert-manager --timeout=300s || echo "cert-manager ready"
-            fi
+      #       # Check if cert-manager already exists
+      #       if sudo -E helm list -n cert-manager | grep -q "^cert-manager"; then
+      #         echo "✅ cert-manager already installed, skipping..."
+      #       else
+      #         echo "🔐 Installing cert-manager..."
+      #         sudo -E helm install cert-manager jetstack/cert-manager \
+      #           --namespace cert-manager \
+      #           --create-namespace \
+      #           --set installCRDs=true
 
-            # Check if Rancher already exists
-            if sudo -E helm list -n cattle-system | grep -q "^rancher"; then
-              echo "✅ Rancher already installed, upgrading..."
-              sudo -E helm upgrade rancher rancher-latest/rancher \
-                --namespace cattle-system \
-                --set hostname=rancher.your-domain.com \
-                --set bootstrapPassword=admin
-            else
-              echo "🚀 Installing new Rancher..."
-              sudo -E helm install rancher rancher-latest/rancher \
-                --namespace cattle-system \
-                --create-namespace \
-                --set hostname=rancher.your-domain.com \
-                --set bootstrapPassword=admin
-            fi
+      #         echo "⏳ Waiting for cert-manager to be ready..."
+      #         kubectl wait --for=condition=ready pod -l app=cert-manager -n cert-manager --timeout=300s || echo "cert-manager ready"
+      #       fi
 
-            echo "⏳ Waiting for Rancher components to be ready..."
-            kubectl wait --for=condition=ready pod -l app=rancher -n cattle-system --timeout=300s || echo "Rancher ready"
+      #       # Check if Rancher already exists
+      #       if sudo -E helm list -n cattle-system | grep -q "^rancher"; then
+      #         echo "✅ Rancher already installed, upgrading..."
+      #         sudo -E helm upgrade rancher rancher-latest/rancher \
+      #           --namespace cattle-system \
+      #           --set hostname=rancher.your-domain.com \
+      #           --set bootstrapPassword=admin
+      #       else
+      #         echo "🚀 Installing new Rancher..."
+      #         sudo -E helm install rancher rancher-latest/rancher \
+      #           --namespace cattle-system \
+      #           --create-namespace \
+      #           --set hostname=rancher.your-domain.com \
+      #           --set bootstrapPassword=admin
+      #       fi
 
-            echo "✅ Rancher Dashboard installation completed!"
+      #       echo "⏳ Waiting for Rancher components to be ready..."
+      #       kubectl wait --for=condition=ready pod -l app=rancher -n cattle-system --timeout=300s || echo "Rancher ready"
+
+      #       echo "✅ Rancher Dashboard installation completed!"
 
       - name: 📋 Display Service Status
         uses: appleboy/ssh-action@v1.0.3
