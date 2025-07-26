@@ -23,8 +23,8 @@ on:
         required: false
         type: boolean
         default: false
-      skip_rancher:
-        description: "Skip Rancher Dashboard installation"
+      skip_k8s_dashboard:
+        description: "Skip Kubernetes Dashboard installation"
         required: false
         type: boolean
         default: false
@@ -51,8 +51,8 @@ on:
         required: false
         type: boolean
         default: false
-      skip_rancher:
-        description: "Skip Rancher Dashboard installation"
+      skip_k8s_dashboard:
+        description: "Skip Kubernetes Dashboard installation"
         required: false
         type: boolean
         default: false
@@ -287,57 +287,68 @@ jobs:
       #         echo "💡 You can apply this later: kubectl apply -f ./k8s/manifests/ingress-controller-service-monitor.yml"
       #       fi
 
-      - name: 🎛️ Install Rancher Dashboard
-        if: ${{ github.event.inputs.skip_rancher != 'true' }}
+      - name: � Install Kubernetes Dashboard
+        if: ${{ github.event.inputs.skip_k8s_dashboard != 'true' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ steps.master-ip.outputs.master_ip }}
           username: ${{ env.SSH_USER }}
           key: ${{ env.MASTER_SSH_KEY }}
           script: |
-            echo "🎛️ Installing Rancher Dashboard..."
+            echo "📱 Installing Official Kubernetes Dashboard..."
 
-            echo "📋 Adding Rancher and Jetstack Helm repositories..."
-            sudo -E helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
-            sudo -E helm repo add jetstack https://charts.jetstack.io
-            sudo -E helm repo update
+            # Create kubernetes-dashboard namespace
+            kubectl create namespace kubernetes-dashboard || echo "Namespace already exists"
 
-            # Check if cert-manager already exists
-            if sudo -E helm list -n cert-manager | grep -q "^cert-manager"; then
-              echo "✅ cert-manager already installed, skipping..."
-            else
-              echo "🔐 Installing cert-manager..."
-              sudo -E helm install cert-manager jetstack/cert-manager \
-                --namespace cert-manager \
-                --create-namespace \
-                --set installCRDs=true
+            # Install Kubernetes Dashboard
+            echo "🚀 Installing Kubernetes Dashboard from official manifests..."
+            kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
 
-              echo "⏳ Waiting for cert-manager to be ready..."
-              kubectl wait --for=condition=ready pod -l app=cert-manager -n cert-manager --timeout=300s || echo "cert-manager ready"
-            fi
+            # Create admin service account for dashboard access
+            echo "👤 Creating admin service account..."
+            cat <<EOF | kubectl apply -f -
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: admin-user
+              namespace: kubernetes-dashboard
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: admin-user
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: cluster-admin
+            subjects:
+            - kind: ServiceAccount
+              name: admin-user
+              namespace: kubernetes-dashboard
+            EOF
 
-            # Check if Rancher already exists
-            if sudo -E helm list -n cattle-system | grep -q "^rancher"; then
-              echo "✅ Rancher already installed, upgrading..."
-              sudo -E helm upgrade rancher rancher-latest/rancher \
-                --namespace cattle-system \
-                --set hostname=rancher.your-domain.com \
-                --set bootstrapPassword=admin
-            else
-              echo "🚀 Installing new Rancher..."
-              sudo -E helm install rancher rancher-latest/rancher \
-                --namespace cattle-system \
-                --create-namespace \
-                --set hostname=rancher.your-domain.com \
-                --set bootstrapPassword=admin
-            fi
+            # Create long-lived token for the admin user
+            echo "🔑 Creating long-lived token for admin user..."
+            cat <<EOF | kubectl apply -f -
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: admin-user-token
+              namespace: kubernetes-dashboard
+              annotations:
+                kubernetes.io/service-account.name: admin-user
+            type: kubernetes.io/service-account-token
+            EOF
 
-            echo "⏳ Waiting for Rancher components to be ready..."
-            kubectl wait --for=condition=ready pod -l app=rancher -n cattle-system --timeout=300s || echo "Rancher ready"
+            echo "⏳ Waiting for Kubernetes Dashboard components to be ready..."
+            kubectl wait --for=condition=ready pod -l k8s-app=kubernetes-dashboard -n kubernetes-dashboard --timeout=300s || echo "Dashboard startup in progress..."
 
-            echo "✅ Rancher Dashboard installation completed!"
+            echo "⏳ Checking Dashboard deployment status..."
+            kubectl get pods -n kubernetes-dashboard
 
-      - name: 📋 Display Service Status
+            echo "✅ Kubernetes Dashboard installation completed!"
+
+      - name: 📱 Display Service Status
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ steps.master-ip.outputs.master_ip }}
@@ -376,10 +387,10 @@ jobs:
               kubectl get pods -n monitoring | grep -E "(loki|promtail)"
             fi
 
-            if [[ "${{ github.event.inputs.skip_rancher }}" != "true" ]]; then
+            if [[ "${{ github.event.inputs.skip_k8s_dashboard }}" != "true" ]]; then
               echo ""
-              echo "🎛️ Rancher Dashboard status:"
-              kubectl get pods -n cattle-system | grep rancher
+              echo "📱 Kubernetes Dashboard status:"
+              kubectl get pods -n kubernetes-dashboard
             fi
 
             echo ""
@@ -444,15 +455,17 @@ jobs:
             fi
             echo ""
 
-            if [[ "${{ github.event.inputs.skip_rancher }}" != "true" ]]; then
-              echo "🎛️ Rancher Dashboard Access:"
+            if [[ "${{ github.event.inputs.skip_k8s_dashboard }}" != "true" ]]; then
+              echo "📱 Kubernetes Dashboard Access:"
               if [ "$INGRESS_IP" != "<pending-external-ip>" ]; then
-                echo "  - URL: https://rancher.$INGRESS_IP.nip.io"
+                echo "  - External URL: https://dashboard.$INGRESS_IP.nip.io"
               else
-                echo "  - URL: https://rancher.<INGRESS_IP>.nip.io (once IP is assigned)"
+                echo "  - External URL: https://dashboard.<INGRESS_IP>.nip.io (once IP is assigned)"
               fi
-              echo "  - Username: admin"
-              echo "  - Initial Password: admin"
+              echo "  - Local URL: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/"
+              echo "  - Run: kubectl proxy (for local access)"
+              echo "  - Get Access Token: kubectl -n kubernetes-dashboard get secret admin-user-token -o jsonpath='{.data.token}' | base64 -d"
+              echo "  - Authentication: Use the token above"
               echo ""
             fi
 
