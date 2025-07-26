@@ -181,7 +181,7 @@ affinity: {}
 imagePullSecrets: []
 
 # -- Annotations for the StatefulSet
-annotations: {}
+annotations: { "goldilocks.fairwinds.com/vpa-update-mode": "auto" }
 
 # -- P2P Port
 p2pPort: 30303

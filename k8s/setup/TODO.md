@@ -255,3 +255,25 @@ ssh-keygen -R IP_ADDRESS
 
 helm install geth .\helm\charts\geth-1.0.9.tgz -f .\helm\values\goeth.yml
 helm upgrade ingress ./helm/charts/ingress-nginx-4.13.0.tgz --namespace ingress-nginx --create-namespace --set controller.metrics.enabled=true --set controller.podAnnotations."prometheus\.io/scrape"="true" --set controller.podAnnotations."prometheus\.io/port"="10254"
+kubectl annotate namespace default \
+ goldilocks.fairwinds.com/vpa-resource-policy='{
+"containerPolicies": [
+{
+"containerName": "geth",
+"minAllowed": {
+"cpu": "100m",
+"memory": "500Mi"
+},
+"maxAllowed": {
+"cpu": 4,
+"memory": "8Gi"
+},
+controlledResources: [ "cpu", "memory" ],
+controlledValues: RequestsAndLimits
+},
+{
+"containerName": "istio-proxy",
+"mode": "Off"
+}
+]
+}'
