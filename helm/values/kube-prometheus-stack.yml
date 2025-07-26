@@ -1,0 +1,14 @@
+grafana:
+  additionalDataSources:
+  - name: Loki
+    type: loki
+    url: http://loki:3100
+    access: proxy
+    isDefault: false
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+      - datasourceUid: prometheus
+        matcherRegex: "traceID=(\\w+)"
+        name: TraceID
+        url: "$${__value.raw}"

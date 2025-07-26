@@ -306,10 +306,6 @@ grafana:
             matcherRegex: "traceID=(\\w+)"
             name: TraceID
             url: "$${__value.raw}"
-
-  # Enable Loki plugin if not already available
-  plugins:
-    - grafana-loki-datasource
 EOF
 
 # Upgrade your existing kube-prometheus-stack

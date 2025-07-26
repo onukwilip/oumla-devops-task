@@ -196,11 +196,13 @@ jobs:
             if helm list -n $MONITORING_NS | grep -q "^monitoring"; then
               echo "✅ Monitoring stack already installed, upgrading..."
               sudo -E helm upgrade monitoring prometheus-community/kube-prometheus-stack \
-                --namespace $MONITORING_NS
+                --namespace $MONITORING_NS \
+                -f ./oumla-devops-task/helm/values/kube-prometheus-stack.yml
             else
               echo "🚀 Installing new monitoring stack..."
               sudo -E helm install monitoring prometheus-community/kube-prometheus-stack \
-                --namespace $MONITORING_NS
+                --namespace $MONITORING_NS \
+                -f ./oumla-devops-task/helm/values/kube-prometheus-stack.yml
             fi
 
             echo "⏳ Waiting for Prometheus CRDs to be ready..."
