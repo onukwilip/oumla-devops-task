@@ -226,21 +226,6 @@ jobs:
               echo "💡 You can apply this later: kubectl apply -f ./k8s/manifests/ingress-controller-service-monitor.yml"
             fi
 
-      - name: 🌐 Apply Ingress Manifests
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ steps.master-ip.outputs.master_ip }}
-          username: ${{ env.SSH_USER }}
-          key: ${{ env.MASTER_SSH_KEY }}
-          script: |
-            echo "🌐 Applying ingress manifests for external access..."
-            cd ~/oumla-devops-task
-            kubectl apply -f k8s/manifests/ingress.yml
-
-            echo "⏳ Waiting for ingress to be ready..."
-            sleep 10
-            kubectl get ingress -A
-
       - name: 📋 Display Service Status
         uses: appleboy/ssh-action@v1.0.3
         with:
