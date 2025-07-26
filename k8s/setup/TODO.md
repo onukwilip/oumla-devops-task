@@ -326,6 +326,35 @@ helm install loki grafana/loki-stack \
   --set promtail.enabled=true
 ```
 
+## SET UP K8S CLUSTER DASHBOARD
+
+```bash
+sudo -E helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
+sudo -E helm repo update
+
+# Install cert-manager first (required)
+sudo -E helm repo add jetstack https://charts.jetstack.io
+sudo -E helm install cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --set installCRDs=true
+
+# Install Rancher
+sudo -E helm install rancher rancher-latest/rancher \
+  --namespace cattle-system \
+  --create-namespace \
+  --set hostname=rancher.your-domain.com \
+  --set bootstrapPassword=admin
+
+# Access Rancher Dashboard
+# 1. Apply ingress configuration: kubectl apply -f k8s/manifests/ingress.yml
+# 2. Get LoadBalancer IP: kubectl get svc ingress-ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+# 3. Access Rancher at: https://rancher.<INGRESS_IP>.nip.io
+# 4. Login with: admin / admin (initial password)
+# 5. Set new password when prompted
+# 6. Import your local cluster for management
+```
+
 ## COMMONLY USED COMMANDS
 
 <!-- * SSH into Node -->
