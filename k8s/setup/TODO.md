@@ -243,37 +243,56 @@ kubectl exec -n kube-system coredns-7db6d8ff4d-qvv2v -- curl -k https://10.96.0.
 kubectl create namespace argocd
 curl -sSL -o argocd-install.yaml https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
+## SET UP GOLDILOCKS FOR VPA
+
+- Annotate the default namespace with the VPA resource policy for Goldilocks
+
+```bash
+kubectl annotate namespace default \
+  goldilocks.fairwinds.com/vpa-resource-policy='{
+    "containerPolicies": [
+      {
+        "containerName": "geth",
+        "minAllowed": {
+          "cpu": "100m",
+          "memory": "500Mi"
+        },
+        "maxAllowed": {
+          "cpu": 4,
+          "memory": "8Gi"
+        },
+        controlledResources: [ "cpu", "memory" ],
+        controlledValues: "RequestsAndLimits"
+      },
+      {
+        "containerName": "istio-proxy",
+        "mode": "Off"
+      }
+    ]
+  }'\
+  --overwrite
+```
+
+- Install Goldilocks using the Helm chart
+
+```bash
+helm repo add fairwinds-stable https://charts.fairwinds.com/stable
+kubectl create namespace goldilocks
+helm install goldilocks --namespace goldilocks fairwinds-stable/goldilocks
+```
+
+- Enable the Default namespace for Goldilocks
+
+```bash
+kubectl label ns default goldilocks.fairwinds.com/enabled=true
+```
+
+## Random
+
 <!-- * SSH into Node -->
 
-ssh -i "C:\Users\Prince\Documents\keys\k8s_control_plane" onukwilip@
+`ssh -i "C:\Users\Prince\Documents\keys\k8s_control_plane" onukwilip@`
 
 <!-- * Remove duplicate host from SSH client -->
 
-ssh-keygen -R IP_ADDRESS
-
-<!-- ! REMOVE -->
-
-helm install geth .\helm\charts\geth-1.0.9.tgz -f .\helm\values\goeth.yml
-helm upgrade ingress ./helm/charts/ingress-nginx-4.13.0.tgz --namespace ingress-nginx --create-namespace --set controller.metrics.enabled=true --set controller.podAnnotations."prometheus\.io/scrape"="true" --set controller.podAnnotations."prometheus\.io/port"="10254"
-kubectl annotate namespace default \
- goldilocks.fairwinds.com/vpa-resource-policy='{
-"containerPolicies": [
-{
-"containerName": "geth",
-"minAllowed": {
-"cpu": "100m",
-"memory": "500Mi"
-},
-"maxAllowed": {
-"cpu": 4,
-"memory": "8Gi"
-},
-controlledResources: [ "cpu", "memory" ],
-controlledValues: RequestsAndLimits
-},
-{
-"containerName": "istio-proxy",
-"mode": "Off"
-}
-]
-}'
+`ssh-keygen -R IP_ADDRESS`
