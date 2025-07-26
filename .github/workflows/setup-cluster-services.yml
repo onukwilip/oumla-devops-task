@@ -13,6 +13,11 @@ on:
         required: false
         type: boolean
         default: false
+      skip_loki:
+        description: "Skip Loki logging stack installation"
+        required: false
+        type: boolean
+        default: false
       upgrade_ingress:
         description: "Upgrade Ingress Controller if already installed"
         required: false
@@ -28,6 +33,11 @@ on:
         default: false
       skip_monitoring:
         description: "Skip Prometheus/Grafana installation"
+        required: false
+        type: boolean
+        default: false
+      skip_loki:
+        description: "Skip Loki logging stack installation"
         required: false
         type: boolean
         default: false
@@ -208,7 +218,46 @@ jobs:
             echo "⏳ Waiting for Prometheus CRDs to be ready..."
             kubectl wait --for condition=established --timeout=300s crd/servicemonitors.monitoring.coreos.com
 
-      - name: 📈 Setup Ingress Controller Monitoring
+      - name: � Install Loki Logging Stack
+        if: ${{ github.event.inputs.skip_loki != 'true' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "📋 Installing Loki logging stack..."
+            export MONITORING_NS=monitoring
+            kubectl create namespace $MONITORING_NS || echo "Namespace already exists"
+
+            echo "📋 Adding Grafana Helm repository..."
+            sudo -E helm repo add grafana https://grafana.github.io/helm-charts
+            sudo -E helm repo update
+
+            # Check if Loki stack already exists
+            if helm list -n $MONITORING_NS | grep -q "^loki"; then
+              echo "✅ Loki stack already installed, upgrading..."
+              sudo -E helm upgrade loki grafana/loki-stack \
+                --namespace $MONITORING_NS \
+                --set grafana.enabled=false \
+                --set prometheus.enabled=false \
+                --set promtail.enabled=true
+            else
+              echo "🚀 Installing new Loki stack..."
+              sudo -E helm install loki grafana/loki-stack \
+                --namespace $MONITORING_NS \
+                --set grafana.enabled=false \
+                --set prometheus.enabled=false \
+                --set promtail.enabled=true
+            fi
+
+            echo "⏳ Waiting for Loki components to be ready..."
+            kubectl wait --for=condition=ready pod -l app=loki -n $MONITORING_NS --timeout=300s || echo "Loki ready"
+            kubectl wait --for=condition=ready pod -l app=promtail -n $MONITORING_NS --timeout=300s || echo "Promtail ready"
+
+            echo "✅ Loki logging stack installation completed!"
+
+      - name: �📈 Setup Ingress Controller Monitoring
         if: ${{ github.event.inputs.skip_monitoring != 'true' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -258,7 +307,13 @@ jobs:
             if [[ "${{ github.event.inputs.skip_monitoring }}" != "true" ]]; then
               echo ""
               echo "📊 Monitoring status:"
-              kubectl get pods -n monitoring
+              kubectl get pods -n monitoring | grep -E "(prometheus|grafana|alertmanager)"
+            fi
+
+            if [[ "${{ github.event.inputs.skip_loki }}" != "true" ]]; then
+              echo ""
+              echo "📋 Loki logging status:"
+              kubectl get pods -n monitoring | grep -E "(loki|promtail)"
             fi
 
             echo ""
