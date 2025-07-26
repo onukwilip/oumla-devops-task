@@ -203,7 +203,7 @@ jobs:
             sudo -E helm repo update
 
             # Check if monitoring release already exists
-            if helm list -n $MONITORING_NS | grep -q "^monitoring"; then
+            if sudo -E helm list -n $MONITORING_NS | grep -q "^monitoring"; then
               echo "✅ Monitoring stack already installed, upgrading..."
               sudo -E helm upgrade monitoring prometheus-community/kube-prometheus-stack \
                 --namespace $MONITORING_NS \
@@ -235,7 +235,7 @@ jobs:
             sudo -E helm repo update
 
             # Check if Loki stack already exists
-            if helm list -n $MONITORING_NS | grep -q "^loki"; then
+            if sudo -E helm list -n $MONITORING_NS | grep -q "^loki"; then
               echo "✅ Loki stack already installed, upgrading..."
               sudo -E helm upgrade loki grafana/loki-stack \
                 --namespace $MONITORING_NS \
