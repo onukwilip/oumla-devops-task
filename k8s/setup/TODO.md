@@ -218,6 +218,7 @@ imageTag:
 
 ## CONNECT TO K8S CLUSTER
 
+```powershell
 $env:KUBECONFIG="$HOME\.kube\config;$HOME\.kube\self-managed-config"
 kubectl config view --flatten --merge > $HOME\.kube\merged-config
 rm $HOME\.kube\config.backup
@@ -225,6 +226,7 @@ mv $HOME\.kube\config $HOME\.kube\config.backup
 mv $HOME\.kube\merged-config $HOME\.kube\config
 kubectl config get-contexts
 kubectl config use-context kubernetes-admin@kubernetes
+```
 
 ## TEST SERVICE CONNECTION
 
@@ -233,10 +235,6 @@ nslookup kubernetes
 
 kubectl run curlpod --rm -it --image=radial/busyboxplus:curl --restart=Never -- sh
 curl -k https://kubernetes.default.svc.cluster.local:443/healthz
-
-## COMMONLY USED COMMANDS
-
-kubectl exec -n kube-system coredns-7db6d8ff4d-qvv2v -- curl -k https://10.96.0.1:443/healthz
 
 ## Set up Argo CD
 
@@ -287,7 +285,54 @@ helm install goldilocks --namespace goldilocks fairwinds-stable/goldilocks
 kubectl label ns default goldilocks.fairwinds.com/enabled=true
 ```
 
-## Random
+## SET UP LOKI
+
+- Create/update your monitoring values file, upgrade/install the `kube-prometheus-stack` Helm chart the following values.
+
+```bash
+# Create/update your monitoring values file
+cat > monitoring-with-loki.yaml << 'EOF'
+grafana:
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki:3100
+      access: proxy
+      isDefault: false
+      jsonData:
+        maxLines: 1000
+        derivedFields:
+          - datasourceUid: prometheus
+            matcherRegex: "traceID=(\\w+)"
+            name: TraceID
+            url: "$${__value.raw}"
+
+  # Enable Loki plugin if not already available
+  plugins:
+    - grafana-loki-datasource
+EOF
+
+# Upgrade your existing kube-prometheus-stack
+helm upgrade monitoring prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  -f monitoring-with-loki.yaml
+```
+
+- Install Loki using the Helm chart
+
+```bash
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+helm install loki grafana/loki-stack \
+  --namespace monitoring \
+  --set grafana.enabled=false \
+  --set prometheus.enabled=false \
+  --set promtail.enabled=true \
+  --set loki.persistence.enabled=true \
+  --set loki.persistence.size=10Gi
+```
+
+## COMMONLY USED COMMANDS
 
 <!-- * SSH into Node -->
 
