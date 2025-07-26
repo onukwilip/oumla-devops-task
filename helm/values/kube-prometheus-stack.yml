@@ -1,11 +1,41 @@
 grafana:
-  # Ensure default data sources are preserved
+  # Ensure default data sources are preserved  
   defaultDashboardsEnabled: true
-  # Add Loki as additional data source
+
+  # Enable sidecar for automatic data source creation
+  sidecar:
+    datasources:
+      enabled: true
+      defaultDatasourceEnabled: true
+
+  # Add all data sources explicitly to ensure they work
   additionalDataSources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    url: http://monitoring-kube-prometheus-prometheus:9090
+    access: proxy
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 30s
+      queryTimeout: 60s
+      httpMethod: POST
+
+  - name: AlertManager
+    type: alertmanager
+    uid: alertmanager
+    url: http://monitoring-kube-prometheus-alertmanager:9093
+    access: proxy
+    isDefault: false
+    editable: false
+    jsonData:
+      implementation: prometheus
+
   - name: Loki
     type: loki
-    url: http://loki.monitoring.svc.cluster.local:3100
+    uid: loki
+    url: http://loki:3100
     access: proxy
     isDefault: false
     editable: true
@@ -13,16 +43,6 @@ grafana:
       maxLines: 1000
       httpMethod: GET
     secureJsonData: {}
-
-  - name: Prometheus
-    type: prometheus
-    uid: prometheus
-    url: http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
-    access: proxy
-    isDefault: false
-    editable: true
-    jsonData:
-      maxLines: 1000
 
 # Ensure Prometheus components are properly configured
 prometheus:
