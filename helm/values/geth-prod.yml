@@ -1,0 +1,179 @@
+# ⚠️  MAINNET GETH CONFIGURATION - SYNC MODE COMPARISON
+# This shows different sync modes and their implications
+
+# 🔄 SYNC MODE OPTIONS (choose ONE):
+
+# 🪶 LIGHT SYNC MODE (Minimal resources)
+extraArgs:
+- "--mainnet"
+- "--syncmode=light" # 🪶 Light sync - downloads block headers only
+- "--cache=512" # 512MB cache (light mode needs less)
+- "--maxpeers=25" # Fewer peers for light mode
+
+# 🚀 SNAP SYNC MODE (Recommended for mainnet)
+# extraArgs:
+# - "--mainnet" 
+# - "--syncmode=snap"        # 🚀 Snap sync - fast sync with state snapshots
+# - "--cache=4096"          # 4GB cache for optimal performance
+# - "--maxpeers=50"
+
+# 📚 FULL SYNC MODE (Complete but slow)
+# extraArgs:
+# - "--mainnet"
+# - "--syncmode=full"        # 📚 Full sync - downloads and validates everything
+# - "--cache=4096"          # 4GB cache needed
+# - "--maxpeers=50"
+
+# 🗄️ STORAGE REQUIREMENTS BY SYNC MODE
+# Light Sync: ~2-5GB (headers + recent state)
+# Snap Sync: ~600-800GB (state snapshot + recent blocks)  
+# Full Sync: ~1500GB+ (complete blockchain history)
+
+persistence:
+  enabled: true
+  accessModes:
+  - ReadWriteOnce
+  # Choose storage size based on sync mode:
+  size: 50Gi # 🪶 Light sync: 50GB is plenty
+  # size: 1000Gi            # � Snap sync: 1TB recommended  
+  # size: 1500Gi            # 📚 Full sync: 1.5TB+ required
+  storageClassName: fast-ssd
+
+extraEnv:
+- name: GETH_PORT
+  value: "30303"
+
+# 🚀 RESOURCE REQUIREMENTS BY SYNC MODE
+resources:
+  # 🪶 LIGHT SYNC RESOURCES (minimal)
+  requests:
+    cpu: 500m # 0.5 CPU cores
+    memory: 1Gi # 1GB RAM
+  limits:
+    cpu: 1000m # 1 CPU core max
+    memory: 2Gi # 2GB RAM max
+  # 🚀 SNAP SYNC RESOURCES (recommended for mainnet)
+  # requests:
+  #   cpu: 2000m            # 2 CPU cores
+  #   memory: 8Gi           # 8GB RAM
+  # limits:
+  #   cpu: 4000m            # 4 CPU cores max
+  #   memory: 16Gi          # 16GB RAM max
+
+  # 📚 FULL SYNC RESOURCES (maximum performance)
+  # requests:
+  #   cpu: 4000m            # 4 CPU cores
+  #   memory: 16Gi          # 16GB RAM
+  # limits:
+  #   cpu: 8000m            # 8 CPU cores max
+  #   memory: 32Gi          # 32GB RAM max
+
+  # 🌐 Service Configuration
+service:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 8545
+    targetPort: 8545
+  - name: ws
+    port: 8546
+    targetPort: 8546
+  - name: p2p
+    port: 30303
+    targetPort: 30303
+
+# 🏥 Health Checks (adjusted per sync mode)
+livenessProbe:
+  tcpSocket:
+    port: 8545
+  # Light sync: starts faster
+  initialDelaySeconds: 60 # 🪶 Light: 1 minute
+  # initialDelaySeconds: 300   # � Snap: 5 minutes  
+  # initialDelaySeconds: 600   # 📚 Full: 10 minutes
+  periodSeconds: 30
+  failureThreshold: 10
+
+readinessProbe:
+  tcpSocket:
+    port: 8545
+  # Sync time varies dramatically by mode
+  initialDelaySeconds: 180 # 🪶 Light: 3 minutes (fast sync)
+  # initialDelaySeconds: 1800  # 🚀 Snap: 30 minutes (initial snapshot)
+  # initialDelaySeconds: 3600  # 📚 Full: 1+ hours (slow initial sync)
+  periodSeconds: 60
+  failureThreshold: 20
+
+# 📊 SYNC MODE COMPARISON TABLE
+# ┌─────────────┬──────────────┬──────────────┬──────────────┐
+# │    Mode     │  Sync Time   │   Storage    │  Features    │
+# ├─────────────┼──────────────┼──────────────┼──────────────┤
+# │ Light       │ 5-15 mins    │ 2-5GB        │ Limited APIs │
+# │ Snap        │ 2-6 hours    │ 600-800GB    │ Full APIs    │
+# │ Full        │ 3-7 days     │ 1500GB+      │ Full Archive │
+# └─────────────┴──────────────┴──────────────┴──────────────┘
+
+# 🔒 SECURITY & LIMITATIONS BY SYNC MODE
+# 🔒 SECURITY & LIMITATIONS BY SYNC MODE
+
+# 🪶 LIGHT SYNC LIMITATIONS:
+# ✅ Pros: Fast, minimal resources, good for most dApps
+# ❌ Cons: Limited historical data, depends on full nodes
+# ❌ No: eth_getLogs for old blocks, archive state access
+# ✅ Has: Current state, recent transactions, block headers
+
+# 🚀 SNAP SYNC (RECOMMENDED):
+# ✅ Pros: Fast initial sync, full node capabilities, complete APIs
+# ✅ Has: Full state, all RPC methods, good performance
+# ⚠️  Note: Downloads state snapshot from trusted peers
+
+# 📚 FULL SYNC (TRADITIONAL):
+# ✅ Pros: Complete validation, full archive, maximum security
+# ✅ Has: Complete blockchain history, all data locally verified
+# ❌ Cons: Very slow, requires massive storage and bandwidth
+
+# 💰 ESTIMATED MONTHLY COSTS BY SYNC MODE:
+
+# 🪶 LIGHT SYNC COSTS:
+# - 50GB SSD Storage: $5-10/month
+# - 1 CPU + 2GB RAM: $20-40/month  
+# - Network bandwidth: $10-20/month
+# - TOTAL: $35-70/month
+
+# 🚀 SNAP SYNC COSTS:
+# - 1TB SSD Storage: $100-200/month
+# - 4 CPU + 16GB RAM: $200-400/month  
+# - Network bandwidth: $30-60/month
+# - TOTAL: $330-660/month
+
+# 📚 FULL SYNC COSTS:
+# - 1.5TB+ SSD Storage: $150-300/month
+# - 8 CPU + 32GB RAM: $400-800/month  
+# - Network bandwidth: $50-100/month
+# - TOTAL: $600-1200/month! 💸
+
+# 📊 Labels
+labels:
+  environment: production
+  network: mainnet
+  # Uncomment the sync mode you're using:
+  sync-mode: light # 🪶 Light sync
+  # sync-mode: snap         # � Snap sync  
+  # sync-mode: full         # 📚 Full sync
+  cost-category: moderate # light: low, snap: moderate, full: expensive
+
+# 🎯 RECOMMENDATION BY USE CASE:
+#
+# 🏠 DEVELOPMENT/TESTING:
+#   Use: Sepolia testnet (current setup) - FREE!
+#
+# 📱 DAPP FRONTEND:
+#   Use: Light sync - fast, cheap, sufficient for most apps
+#
+# 🏢 PRODUCTION BACKEND:
+#   Use: Snap sync - good balance of speed, cost, and features
+#
+# 🏦 FINANCIAL/ANALYTICS:
+#   Use: Full sync - complete data, maximum security
+#
+# 💡 HYBRID APPROACH:
+#   Use: External RPC (Infura/Alchemy) + Light node for redundancy
