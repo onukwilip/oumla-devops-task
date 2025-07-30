@@ -3,3 +3,5 @@
 .terraform.lock.hcl
 terraform.tfstate
 unused
+*/node_modules
+package-lock.json
