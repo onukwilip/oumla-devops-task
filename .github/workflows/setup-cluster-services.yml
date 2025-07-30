@@ -194,162 +194,165 @@ jobs:
             # Create kubernetes-dashboard namespace
             kubectl create namespace kubernetes-dashboard || echo "Namespace already exists"
 
+            # Create goldilocks namespace
+            kubectl create namespace goldilocks || echo "Namespace already exists"
+
             # Apply ingress manifests with IP substitution
             echo "🌐 Applying ingress manifests with LoadBalancer IP..."
             envsubst < k8s/manifests/ingress.yml > /tmp/ingress-applied.yml
             kubectl apply -f /tmp/ingress-applied.yml
 
-      # - name: 📊 Install Prometheus & Grafana
-      #   if: ${{ github.event.inputs.skip_monitoring != 'true' }}
-      #   uses: appleboy/ssh-action@v1.0.3
-      #   with:
-      #     host: ${{ steps.master-ip.outputs.master_ip }}
-      #     username: ${{ env.SSH_USER }}
-      #     key: ${{ env.MASTER_SSH_KEY }}
-      #     script: |
-      #       echo "📊 Setting up monitoring namespace..."
-      #       export MONITORING_NS=monitoring
-      #       kubectl create namespace $MONITORING_NS || echo "Namespace already exists"
-
-      #       echo "📊 Adding Prometheus Helm repository..."
-      #       sudo -E helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-      #       sudo -E helm repo update
-
-      #       # Check if monitoring release already exists
-      #       if sudo -E helm list -n $MONITORING_NS | grep -q "^monitoring"; then
-      #         echo "✅ Monitoring stack already installed, upgrading..."
-      #         sudo -E helm upgrade monitoring prometheus-community/kube-prometheus-stack \
-      #           --namespace $MONITORING_NS \
-      #           -f ./oumla-devops-task/helm/values/kube-prometheus-stack.yml
-      #       else
-      #         echo "🚀 Installing new monitoring stack..."
-      #         sudo -E helm install monitoring prometheus-community/kube-prometheus-stack \
-      #           --namespace $MONITORING_NS \
-      #           -f ./oumla-devops-task/helm/values/kube-prometheus-stack.yml
-      #       fi
-
-      #       echo "⏳ Waiting for Prometheus CRDs to be ready..."
-      #       kubectl wait --for condition=established --timeout=300s crd/servicemonitors.monitoring.coreos.com
-
-      # - name: 🧾 Install Loki Logging Stack
-      #   if: ${{ github.event.inputs.skip_loki != 'true' }}
-      #   uses: appleboy/ssh-action@v1.0.3
-      #   with:
-      #     host: ${{ steps.master-ip.outputs.master_ip }}
-      #     username: ${{ env.SSH_USER }}
-      #     key: ${{ env.MASTER_SSH_KEY }}
-      #     script: |
-      #       echo "📋 Installing Loki logging stack..."
-      #       export MONITORING_NS=monitoring
-      #       kubectl create namespace $MONITORING_NS || echo "Namespace already exists"
-
-      #       echo "📋 Adding Grafana Helm repository..."
-      #       sudo -E helm repo add grafana https://grafana.github.io/helm-charts
-      #       sudo -E helm repo update
-
-      #       # Check if Loki stack already exists
-      #       if sudo -E helm list -n $MONITORING_NS | grep -q "^loki"; then
-      #         echo "✅ Loki stack already installed, upgrading..."
-      #         sudo -E helm upgrade loki grafana/loki-stack \
-      #           --namespace $MONITORING_NS \
-      #           --set grafana.enabled=false \
-      #           --set prometheus.enabled=false \
-      #           --set promtail.enabled=true
-      #       else
-      #         echo "🚀 Installing new Loki stack..."
-      #         sudo -E helm install loki grafana/loki-stack \
-      #           --namespace $MONITORING_NS \
-      #           --set grafana.enabled=false \
-      #           --set prometheus.enabled=false \
-      #           --set promtail.enabled=true
-      #       fi
-
-      #       echo "⏳ Waiting for Loki components to be ready..."
-      #       kubectl wait --for=condition=ready pod -l app=loki -n $MONITORING_NS --timeout=300s || echo "Loki ready"
-      #       kubectl wait --for=condition=ready pod -l app=promtail -n $MONITORING_NS --timeout=300s || echo "Promtail ready"
-
-      #       echo "✅ Loki logging stack installation completed!"
-
-      # - name: 📈 Setup Ingress Controller Monitoring
-      #   if: ${{ github.event.inputs.skip_monitoring != 'true' }}
-      #   uses: appleboy/ssh-action@v1.0.3
-      #   with:
-      #     host: ${{ steps.master-ip.outputs.master_ip }}
-      #     username: ${{ env.SSH_USER }}
-      #     key: ${{ env.MASTER_SSH_KEY }}
-      #     script: |
-      #       echo "📈 Creating service monitor for Ingress Controller..."
-      #       cd ~/oumla-devops-task
-
-      #       # Verify ServiceMonitor CRD exists before applying
-      #       if kubectl get crd servicemonitors.monitoring.coreos.com &> /dev/null; then
-      #         echo "✅ ServiceMonitor CRD found, applying manifest..."
-      #         kubectl apply -f ./k8s/manifests/ingress-controller-service-monitor.yml
-      #       else
-      #         echo "⚠️  ServiceMonitor CRD not found, skipping ingress monitoring setup"
-      #         echo "💡 You can apply this later: kubectl apply -f ./k8s/manifests/ingress-controller-service-monitor.yml"
-      #       fi
-
-      - name: � Install Kubernetes Dashboard
-        if: ${{ github.event.inputs.skip_k8s_dashboard != 'true' }}
+      - name: 📊 Install Prometheus & Grafana
+        if: ${{ github.event.inputs.skip_monitoring != 'true' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ steps.master-ip.outputs.master_ip }}
           username: ${{ env.SSH_USER }}
           key: ${{ env.MASTER_SSH_KEY }}
           script: |
-            echo "📱 Installing Official Kubernetes Dashboard..."
+            echo "📊 Setting up monitoring namespace..."
+            export MONITORING_NS=monitoring
+            kubectl create namespace $MONITORING_NS || echo "Namespace already exists"
 
-            # Create kubernetes-dashboard namespace
-            kubectl create namespace kubernetes-dashboard || echo "Namespace already exists"
+            echo "📊 Adding Prometheus Helm repository..."
+            sudo -E helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+            sudo -E helm repo update
 
-            # Install Kubernetes Dashboard
-            echo "🚀 Installing Kubernetes Dashboard from official manifests..."
-            kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+            # Check if monitoring release already exists
+            if sudo -E helm list -n $MONITORING_NS | grep -q "^monitoring"; then
+              echo "✅ Monitoring stack already installed, upgrading..."
+              sudo -E helm upgrade monitoring prometheus-community/kube-prometheus-stack \
+                --namespace $MONITORING_NS \
+                -f ./oumla-devops-task/helm/values/kube-prometheus-stack.yml
+            else
+              echo "🚀 Installing new monitoring stack..."
+              sudo -E helm install monitoring prometheus-community/kube-prometheus-stack \
+                --namespace $MONITORING_NS \
+                -f ./oumla-devops-task/helm/values/kube-prometheus-stack.yml
+            fi
 
-            # Create admin service account for dashboard access
-            echo "👤 Creating admin service account..."
-            cat <<EOF | kubectl apply -f -
-            apiVersion: v1
-            kind: ServiceAccount
-            metadata:
-              name: admin-user
-              namespace: kubernetes-dashboard
-            ---
-            apiVersion: rbac.authorization.k8s.io/v1
-            kind: ClusterRoleBinding
-            metadata:
-              name: admin-user
-            roleRef:
-              apiGroup: rbac.authorization.k8s.io
-              kind: ClusterRole
-              name: cluster-admin
-            subjects:
-            - kind: ServiceAccount
-              name: admin-user
-              namespace: kubernetes-dashboard
-            EOF
+            echo "⏳ Waiting for Prometheus CRDs to be ready..."
+            kubectl wait --for condition=established --timeout=300s crd/servicemonitors.monitoring.coreos.com
 
-            # Create long-lived token for the admin user
-            echo "🔑 Creating long-lived token for admin user..."
-            cat <<EOF | kubectl apply -f -
-            apiVersion: v1
-            kind: Secret
-            metadata:
-              name: admin-user-token
-              namespace: kubernetes-dashboard
-              annotations:
-                kubernetes.io/service-account.name: admin-user
-            type: kubernetes.io/service-account-token
-            EOF
+      - name: 🧾 Install Loki Logging Stack
+        if: ${{ github.event.inputs.skip_loki != 'true' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "📋 Installing Loki logging stack..."
+            export MONITORING_NS=monitoring
+            kubectl create namespace $MONITORING_NS || echo "Namespace already exists"
 
-            echo "⏳ Waiting for Kubernetes Dashboard components to be ready..."
-            kubectl wait --for=condition=ready pod -l k8s-app=kubernetes-dashboard -n kubernetes-dashboard --timeout=300s || echo "Dashboard startup in progress..."
+            echo "📋 Adding Grafana Helm repository..."
+            sudo -E helm repo add grafana https://grafana.github.io/helm-charts
+            sudo -E helm repo update
 
-            echo "⏳ Checking Dashboard deployment status..."
-            kubectl get pods -n kubernetes-dashboard
+            # Check if Loki stack already exists
+            if sudo -E helm list -n $MONITORING_NS | grep -q "^loki"; then
+              echo "✅ Loki stack already installed, upgrading..."
+              sudo -E helm upgrade loki grafana/loki-stack \
+                --namespace $MONITORING_NS \
+                --set grafana.enabled=false \
+                --set prometheus.enabled=false \
+                --set promtail.enabled=true
+            else
+              echo "🚀 Installing new Loki stack..."
+              sudo -E helm install loki grafana/loki-stack \
+                --namespace $MONITORING_NS \
+                --set grafana.enabled=false \
+                --set prometheus.enabled=false \
+                --set promtail.enabled=true
+            fi
 
-            echo "✅ Kubernetes Dashboard installation completed!"
+            echo "⏳ Waiting for Loki components to be ready..."
+            kubectl wait --for=condition=ready pod -l app=loki -n $MONITORING_NS --timeout=300s || echo "Loki ready"
+            kubectl wait --for=condition=ready pod -l app=promtail -n $MONITORING_NS --timeout=300s || echo "Promtail ready"
+
+            echo "✅ Loki logging stack installation completed!"
+
+      - name: 📈 Setup Ingress Controller Monitoring
+        if: ${{ github.event.inputs.skip_monitoring != 'true' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.master-ip.outputs.master_ip }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.MASTER_SSH_KEY }}
+          script: |
+            echo "📈 Creating service monitor for Ingress Controller..."
+            cd ~/oumla-devops-task
+
+            # Verify ServiceMonitor CRD exists before applying
+            if kubectl get crd servicemonitors.monitoring.coreos.com &> /dev/null; then
+              echo "✅ ServiceMonitor CRD found, applying manifest..."
+              kubectl apply -f ./k8s/manifests/ingress-controller-service-monitor.yml
+            else
+              echo "⚠️  ServiceMonitor CRD not found, skipping ingress monitoring setup"
+              echo "💡 You can apply this later: kubectl apply -f ./k8s/manifests/ingress-controller-service-monitor.yml"
+            fi
+
+      # - name: � Install Kubernetes Dashboard
+      #   if: ${{ github.event.inputs.skip_k8s_dashboard != 'true' }}
+      #   uses: appleboy/ssh-action@v1.0.3
+      #   with:
+      #     host: ${{ steps.master-ip.outputs.master_ip }}
+      #     username: ${{ env.SSH_USER }}
+      #     key: ${{ env.MASTER_SSH_KEY }}
+      #     script: |
+      #       echo "📱 Installing Official Kubernetes Dashboard..."
+
+      #       # Create kubernetes-dashboard namespace
+      #       kubectl create namespace kubernetes-dashboard || echo "Namespace already exists"
+
+      #       # Install Kubernetes Dashboard
+      #       echo "🚀 Installing Kubernetes Dashboard from official manifests..."
+      #       kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+
+      #       # Create admin service account for dashboard access
+      #       echo "👤 Creating admin service account..."
+      #       cat <<EOF | kubectl apply -f -
+      #       apiVersion: v1
+      #       kind: ServiceAccount
+      #       metadata:
+      #         name: admin-user
+      #         namespace: kubernetes-dashboard
+      #       ---
+      #       apiVersion: rbac.authorization.k8s.io/v1
+      #       kind: ClusterRoleBinding
+      #       metadata:
+      #         name: admin-user
+      #       roleRef:
+      #         apiGroup: rbac.authorization.k8s.io
+      #         kind: ClusterRole
+      #         name: cluster-admin
+      #       subjects:
+      #       - kind: ServiceAccount
+      #         name: admin-user
+      #         namespace: kubernetes-dashboard
+      #       EOF
+
+      #       # Create long-lived token for the admin user
+      #       echo "🔑 Creating long-lived token for admin user..."
+      #       cat <<EOF | kubectl apply -f -
+      #       apiVersion: v1
+      #       kind: Secret
+      #       metadata:
+      #         name: admin-user-token
+      #         namespace: kubernetes-dashboard
+      #         annotations:
+      #           kubernetes.io/service-account.name: admin-user
+      #       type: kubernetes.io/service-account-token
+      #       EOF
+
+      #       echo "⏳ Waiting for Kubernetes Dashboard components to be ready..."
+      #       kubectl wait --for=condition=ready pod -l k8s-app=kubernetes-dashboard -n kubernetes-dashboard --timeout=300s || echo "Dashboard startup in progress..."
+
+      #       echo "⏳ Checking Dashboard deployment status..."
+      #       kubectl get pods -n kubernetes-dashboard
+
+      #       echo "✅ Kubernetes Dashboard installation completed!"
 
       - name: 📱 Display Service Status
         uses: appleboy/ssh-action@v1.0.3
